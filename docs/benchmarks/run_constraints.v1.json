@@ -1,0 +1,48 @@
+{
+  "version": "run_constraints.v1",
+  "environment": {
+    "os": "Ubuntu 24.04 LTS (x86_64) or equivalent Linux",
+    "cpu": "8 cores or more (SMT allowed)",
+    "ram": "32 GB recommended (16 GB minimum)",
+    "storage": "NVMe SSD recommended",
+    "offline": true
+  },
+  "execution": {
+    "cold_warm": [
+      {
+        "mode": "cold",
+        "description": "OS reboot or page-cache drop equivalent where possible"
+      },
+      {
+        "mode": "warm",
+        "description": "Second run of same query with cache effects"
+      }
+    ],
+    "concurrency": {
+      "threads": [
+        "1",
+        "auto"
+      ]
+    },
+    "timeouts": {
+      "per_query_sec": 10,
+      "per_repo_sec": 600
+    },
+    "output_limits": {
+      "max_hits": 2000
+    }
+  },
+  "latency_targets": {
+    "p50_ms": 50,
+    "p95_ms": 200,
+    "p99_ms": 500
+  },
+  "reporting_must_include": [
+    "uname -a",
+    "lscpu",
+    "free -h",
+    "lsblk (device/model)",
+    "tool --version for each baseline",
+    "per-query wall/CPU time, RSS peak, read bytes"
+  ]
+}

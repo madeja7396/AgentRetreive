@@ -15,6 +15,7 @@ Workflow: `.github/workflows/ci.yml`
 - Checks:
   - JSON 構文検証（`docs/schemas/*.json`, `tasks/templates/*.json`）
   - schema 検証（テンプレートが schema に準拠）
+  - schema 検証（`docs/benchmarks/*` が対応 schema に準拠）
 
 実行スクリプト:
 

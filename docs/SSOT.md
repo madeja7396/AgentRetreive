@@ -24,6 +24,7 @@
 | Result v1 | `docs/schemas/result.minijson.v1.schema.json` | 出力契約 |
 | Dataset Manifest v1 | `docs/schemas/dataset_manifest.v1.schema.json` | データ来歴契約 |
 | Experiment Run Record v1 | `docs/schemas/experiment_run_record.v1.schema.json` | 実験再現契約 |
+| Benchmark Inputs v1 | `docs/benchmarks/*` | 評価コーパス、タスク、ベースライン、実行制約 |
 | 計画進行 | `tasks/todo.md` | 実行フェーズ、ゲート、レビュー |
 | リスク管理 | `tasks/risk_register.md` | リスクと緩和策 |
 | 検証定義 | `tasks/validation_matrix.md` | 検証方法と exit criteria |

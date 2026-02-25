@@ -1,0 +1,50 @@
+{
+  "version": "corpus.v1",
+  "corpora": [
+    {
+      "id": "ripgrep",
+      "url": "https://github.com/BurntSushi/ripgrep",
+      "commit": "af60c2d",
+      "tag": "15.1.0",
+      "license": "Unlicense OR MIT",
+      "primary_language": "Rust",
+      "notes": "Search tool codebase with CLI, ignore, regex, docs, and benchmarks."
+    },
+    {
+      "id": "fd",
+      "url": "https://github.com/sharkdp/fd",
+      "commit": "d38148f",
+      "tag": "v10.3.0",
+      "license": "Apache-2.0 OR MIT",
+      "primary_language": "Rust",
+      "notes": "File discovery tool with practical search and ignore behavior."
+    },
+    {
+      "id": "fzf",
+      "url": "https://github.com/junegunn/fzf",
+      "commit": "b908f7a",
+      "tag": "v0.68.0",
+      "license": "MIT",
+      "primary_language": "Go",
+      "notes": "Interactive filtering tool with shell integration and env-heavy usage."
+    },
+    {
+      "id": "curl",
+      "url": "https://github.com/curl/curl",
+      "commit": "2eebc58",
+      "tag": "curl-8_18_0",
+      "license": "MIT-like",
+      "primary_language": "C",
+      "notes": "Large C codebase with docs, src/lib, and tests."
+    },
+    {
+      "id": "fmt",
+      "url": "https://github.com/fmtlib/fmt",
+      "commit": "407c905",
+      "tag": "12.1.0",
+      "license": "MIT",
+      "primary_language": "C++",
+      "notes": "C++ library with headers, benchmarks, and build configuration details."
+    }
+  ]
+}

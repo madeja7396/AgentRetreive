@@ -1,0 +1,25 @@
+{
+  "version": "baselines.v1",
+  "baselines": [
+    {
+      "tool": "ripgrep",
+      "version": "15.1.0",
+      "cmd_template": "rg --no-heading --line-number --color never {pattern} {path}"
+    },
+    {
+      "tool": "git-grep",
+      "version": "2.53.0",
+      "cmd_template": "git grep -n --no-color {pattern} -- {path}"
+    },
+    {
+      "tool": "ugrep",
+      "version": "7.5.0",
+      "cmd_template": "ugrep -n --no-color {pattern} {path}"
+    },
+    {
+      "tool": "gnu-grep",
+      "version": "3.11",
+      "cmd_template": "grep -R -n --binary-files=without-match --color=never {pattern} {path}"
+    }
+  ]
+}

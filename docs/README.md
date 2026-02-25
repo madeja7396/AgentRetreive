@@ -11,6 +11,7 @@
 3. `docs/schemas/*.schema.json`
 4. `docs/CI_CD.md`
 5. `docs/WORKTREE.md`
+6. `docs/benchmarks/*`
 
 ## 原則
 

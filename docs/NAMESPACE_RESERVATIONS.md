@@ -68,6 +68,13 @@
 - `artifacts/papers/figures/`
 - `artifacts/papers/tables/`
 
+`docs/benchmarks/` 以下の予約:
+
+- `docs/benchmarks/corpus.v1.json`
+- `docs/benchmarks/taskset.v1.jsonl`
+- `docs/benchmarks/baselines.v1.json`
+- `docs/benchmarks/run_constraints.v1.json`
+
 ## 6. 禁止事項
 
 - 予約済み prefix/key の再定義
