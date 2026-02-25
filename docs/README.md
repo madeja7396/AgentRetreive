@@ -9,6 +9,7 @@
 1. `docs/SSOT.md`
 2. `docs/NAMESPACE_RESERVATIONS.md`
 3. `docs/schemas/*.schema.json`
+4. `docs/CI_CD.md`
 
 ## 原則
 

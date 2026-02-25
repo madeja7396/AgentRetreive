@@ -9,7 +9,7 @@
   "dataset_id": "ds_yyyymmdd_name_v1",
   "config": {
     "path": "configs/exp/default.yaml",
-    "sha256": "REPLACE_ME"
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
   },
   "seed": 42,
   "environment": {

@@ -32,6 +32,7 @@
 - [x] リスク登録簿（`tasks/risk_register.md`）を初期化
 - [x] 検証マトリクス（`tasks/validation_matrix.md`）を初期化
 - [x] 研究運用基盤（`tasks/research_foundation.md`）を初期化
+- [x] CI/CD 基盤（`ci.yml` / `cd-release.yml` / contract validator）を初期化
 
 ### Phase 1: 仕様凍結
 
@@ -118,3 +119,11 @@
 - スタッフエンジニア観点: 実装前に契約境界を固定できる状態へ改善
 - 残課題: schema の実運用テスト（validator 導入）と CI 連携
 - 判定: `Go`（仕様の初版として受理）
+
+### 2026-02-25 CI/CD 基盤レビュー
+
+- 実施内容: contract validation CI と release artifact CD を追加
+- 検証: ローカルで validator 実行、JSON/schema 整合を確認
+- スタッフエンジニア観点: 仕様変更時の品質ゲートと配布導線を確保
+- 残課題: branch protection 設定と release versioning 規約の固定
+- 判定: `Go`（基盤として受理）
