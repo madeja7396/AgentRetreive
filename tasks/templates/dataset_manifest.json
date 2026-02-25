@@ -1,0 +1,25 @@
+{
+  "version": "dataset_manifest.v1",
+  "dataset_id": "ds_yyyymmdd_name_v1",
+  "created_at_utc": "2026-02-25T00:00:00Z",
+  "source": {
+    "type": "git_repository",
+    "url": "https://example.com/repo.git",
+    "snapshot": {
+      "commit": "0123456789abcdef0123456789abcdef01234567",
+      "tag": null
+    }
+  },
+  "license": "MIT",
+  "collection": {
+    "script": "scripts/collect_dataset.sh",
+    "script_version": "v1"
+  },
+  "artifacts": [
+    {
+      "path": "artifacts/datasets/raw/ds_yyyymmdd_name_v1.tar.gz",
+      "sha256": "REPLACE_ME"
+    }
+  ],
+  "notes": "Add task definition, filtering rules, and known caveats."
+}

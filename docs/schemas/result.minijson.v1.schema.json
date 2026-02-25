@@ -1,0 +1,187 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sch_result_minijson_v1",
+  "title": "AgentRetrieve Result Mini-JSON v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "v",
+    "ok",
+    "p",
+    "r",
+    "t",
+    "lim"
+  ],
+  "properties": {
+    "v": {
+      "const": "result.v1"
+    },
+    "ok": {
+      "type": "boolean"
+    },
+    "p": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "maxItems": 4096
+    },
+    "r": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "pi",
+          "s",
+          "h",
+          "rng",
+          "next",
+          "doc_id",
+          "span_id",
+          "digest",
+          "bounds"
+        ],
+        "properties": {
+          "pi": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "s": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000
+          },
+          "doc_id": {
+            "type": "string",
+            "pattern": "^doc_[a-z0-9_]+$"
+          },
+          "span_id": {
+            "type": "string",
+            "pattern": "^span_[a-z0-9_]+$"
+          },
+          "digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{8,64}$"
+          },
+          "bounds": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "start",
+              "end"
+            ],
+            "properties": {
+              "start": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "end": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          },
+          "h": {
+            "type": "array",
+            "maxItems": 200,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "ln",
+                "txt",
+                "sc"
+              ],
+              "properties": {
+                "ln": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "txt": {
+                  "type": "string"
+                },
+                "sc": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1000
+                }
+              }
+            }
+          },
+          "rng": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "from",
+              "to"
+            ],
+            "properties": {
+              "from": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "to": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          },
+          "next": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "string",
+              "pattern": "^span_[a-z0-9_]+$"
+            }
+          }
+        }
+      }
+    },
+    "t": {
+      "type": "boolean"
+    },
+    "cur": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^cur_[a-z0-9_]+$"
+    },
+    "lim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_bytes",
+        "max_results",
+        "max_hits",
+        "max_excerpt",
+        "emitted_bytes"
+      ],
+      "properties": {
+        "max_bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_results": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_hits": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_excerpt": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "emitted_bytes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}
