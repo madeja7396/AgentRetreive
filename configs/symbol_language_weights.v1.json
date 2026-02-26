@@ -1,0 +1,85 @@
+{
+  "version": "symbol_language_weights.v1",
+  "global_weight": -0.03848044652398934,
+  "by_lang": {
+    "c": -0.03985206055093868,
+    "cpp": -0.03848044652398934,
+    "go": -0.058845938782097165,
+    "python": -0.03848044652398934,
+    "rust": -0.014072076791766494
+  },
+  "metadata": {
+    "generated_at": "2026-02-26T20:02:11.998768+00:00",
+    "method": "logistic_regression_with_language_interaction",
+    "taskset": "/mnt/d/dev/AgentRetrieve/docs/benchmarks/taskset.v2.full.jsonl",
+    "config": "/mnt/d/dev/AgentRetrieve/artifacts/experiments/pipeline/generated_experiment_pipeline.auto.yaml",
+    "max_results_per_task": 50,
+    "sample_count": 34,
+    "positive_sample_count": 5,
+    "languages": [
+      "c",
+      "cpp",
+      "go",
+      "python",
+      "rust"
+    ],
+    "positive_count_by_lang": {
+      "rust": 3,
+      "c": 1,
+      "go": 1
+    },
+    "task_total_by_repo": {
+      "ripgrep": 5,
+      "fd": 5,
+      "fzf": 5,
+      "curl": 5,
+      "fmt": 5,
+      "pytest": 5,
+      "cli": 5,
+      "axios": 0,
+      "typescript": 0,
+      "gson": 0,
+      "cabal": 0,
+      "elixir": 0,
+      "aspnetcore": 0,
+      "symfony": 0,
+      "rails": 0,
+      "ktor": 0,
+      "swiftpm": 0,
+      "flutter": 0
+    },
+    "task_used_by_repo": {
+      "ripgrep": 1,
+      "fd": 2,
+      "fmt": 1,
+      "cli": 1
+    },
+    "l2_selected": 10.0,
+    "cv_logloss": {
+      "0.01": 1.068981709926355,
+      "0.03": 1.0511236983535726,
+      "0.1": 1.0019007627237566,
+      "0.3": 0.9240642623975942,
+      "1.0": 0.8465205508309994,
+      "3.0": 0.8177060879415372,
+      "10.0": 0.8091943831154619
+    },
+    "coefficients": {
+      "beta_intercept": -1.7310601186238501,
+      "beta_base": 0.03379539670810933,
+      "beta_symbol_global": -0.03848044652398934,
+      "beta_symbol_lang_delta": {
+        "c": -0.0027432280538986875,
+        "cpp": -0.027550726930172107,
+        "go": -0.04073098451621565,
+        "python": 0.0,
+        "rust": 0.03254449297629713
+      }
+    },
+    "score_mapping": "weight = beta_symbol (logit coefficient, no manual scaling)",
+    "shrinkage": {
+      "type": "empirical_bayes",
+      "kappa_median_positive_count": 1.0
+    }
+  }
+}

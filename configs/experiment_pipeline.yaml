@@ -1,0 +1,111 @@
+# Experiment Pipeline Configuration
+version: "1.0"
+
+# Repositories to evaluate
+repositories:
+  - id: fd
+    language: rust
+    index: artifacts/datasets/fd.index.json
+    source: artifacts/datasets/raw/fd
+  - id: ripgrep
+    language: rust
+    index: artifacts/datasets/ripgrep.index.json
+    source: artifacts/datasets/raw/ripgrep
+  - id: fzf
+    language: go
+    index: artifacts/datasets/fzf.index.json
+    source: artifacts/datasets/raw/fzf
+  - id: fmt
+    language: cpp
+    index: artifacts/datasets/fmt.index.json
+    source: artifacts/datasets/raw/fmt
+  - id: curl
+    language: c
+    index: artifacts/datasets/curl.index.json
+    source: artifacts/datasets/raw/curl
+  - id: pytest
+    language: python
+    index: artifacts/datasets/pytest.index.json
+    source: artifacts/datasets/raw/pytest
+  - id: cli
+    language: go
+    index: artifacts/datasets/cli.index.json
+    source: artifacts/datasets/raw/cli
+  - id: axios
+    language: javascript
+    index: artifacts/datasets/axios.index.json
+    source: artifacts/datasets/raw/axios
+  - id: typescript
+    language: typescript
+    index: artifacts/datasets/typescript.index.json
+    source: artifacts/datasets/raw/typescript
+  - id: gson
+    language: java
+    index: artifacts/datasets/gson.index.json
+    source: artifacts/datasets/raw/gson
+  - id: cabal
+    language: haskell
+    index: artifacts/datasets/cabal.index.json
+    source: artifacts/datasets/raw/cabal
+  - id: elixir
+    language: elixir
+    index: artifacts/datasets/elixir.index.json
+    source: artifacts/datasets/raw/elixir
+  - id: aspnetcore
+    language: csharp
+    index: artifacts/datasets/aspnetcore.index.json
+    source: artifacts/datasets/raw/aspnetcore
+  - id: symfony
+    language: php
+    index: artifacts/datasets/symfony.index.json
+    source: artifacts/datasets/raw/symfony
+  - id: rails
+    language: ruby
+    index: artifacts/datasets/rails.index.json
+    source: artifacts/datasets/raw/rails
+  - id: ktor
+    language: kotlin
+    index: artifacts/datasets/ktor.index.json
+    source: artifacts/datasets/raw/ktor
+  - id: swiftpm
+    language: swift
+    index: artifacts/datasets/swiftpm.index.json
+    source: artifacts/datasets/raw/swiftpm
+  - id: flutter
+    language: dart
+    index: artifacts/datasets/flutter.index.json
+    source: artifacts/datasets/raw/flutter
+
+# Tasksets
+tasksets:
+  v2_full: docs/benchmarks/taskset.v2.full.jsonl
+
+# Parameter Search Space
+parameter_search:
+  enabled: true
+  grid:
+    k1: [0.8, 1.0, 1.2, 1.5, 2.0]
+    b: [0.3, 0.5, 0.75, 0.9, 1.0]
+    min_match_ratio: [0.0, 0.25, 0.5, 0.75]
+    max_terms: [2, 3, 4]
+  
+  # Optimization target
+  optimization:
+    primary_metric: mrr
+    secondary_metric: recall
+    weights:
+      easy: 1.0
+      medium: 1.5
+      hard: 2.0
+
+# Output Configuration
+output:
+  base_dir: artifacts/experiments/pipeline
+  save_intermediate: true
+  formats: [json, csv, markdown]
+
+# Execution
+execution:
+  parallel: true
+  max_workers: 4
+  timeout_per_repo: 300
