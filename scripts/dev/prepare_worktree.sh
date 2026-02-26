@@ -11,6 +11,11 @@ mkdir -p artifacts/experiments/runs
 mkdir -p artifacts/experiments/summaries
 mkdir -p artifacts/papers/figures
 mkdir -p artifacts/papers/tables
+mkdir -p artifacts/agentd/spool/pending
+mkdir -p artifacts/agentd/spool/in_progress
+mkdir -p artifacts/agentd/spool/done
+mkdir -p artifacts/agentd/spool/dead
+mkdir -p artifacts/agentd/logs
 mkdir -p dist
 
 echo "[OK] worktree local directories prepared under:"

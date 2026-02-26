@@ -67,6 +67,11 @@
 - `artifacts/experiments/summaries/`
 - `artifacts/papers/figures/`
 - `artifacts/papers/tables/`
+- `artifacts/agentd/spool/pending/`
+- `artifacts/agentd/spool/in_progress/`
+- `artifacts/agentd/spool/done/`
+- `artifacts/agentd/spool/dead/`
+- `artifacts/agentd/logs/`
 
 `docs/benchmarks/` 以下の予約:
 
@@ -74,6 +79,10 @@
 - `docs/benchmarks/taskset.v1.jsonl`
 - `docs/benchmarks/baselines.v1.json`
 - `docs/benchmarks/run_constraints.v1.json`
+
+`docs/contracts/` 以下の予約:
+
+- `docs/contracts/contract_policy.v1.json`
 
 ## 6. 禁止事項
 

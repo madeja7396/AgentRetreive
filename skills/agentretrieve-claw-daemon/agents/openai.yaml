@@ -1,0 +1,4 @@
+interface:
+  display_name: "AgentRetrieve Claw Daemon"
+  short_description: "Operate AgentRetrieve spool daemon safely"
+  default_prompt: "Use this skill to run, queue, and recover AgentRetrieve claw-style daemon tasks safely."

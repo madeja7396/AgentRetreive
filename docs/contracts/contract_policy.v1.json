@@ -1,0 +1,18 @@
+{
+  "version": "contract_policy.v1",
+  "minimums": {
+    "corpora": 5,
+    "baselines": 4,
+    "tasks_total": 25,
+    "tasks_per_repo": 5,
+    "must_terms_per_task": 1,
+    "anchor_min_length": 8
+  },
+  "baseline_required_placeholders": [
+    "{pattern}",
+    "{path}"
+  ],
+  "run_constraints": {
+    "enforce_latency_order": true
+  }
+}

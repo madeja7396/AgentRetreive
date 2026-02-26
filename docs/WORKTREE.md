@@ -24,6 +24,7 @@
 - `artifacts/datasets/{manifests,raw,processed}`
 - `artifacts/experiments/{runs,summaries}`
 - `artifacts/papers/{figures,tables}`
+- `artifacts/agentd/{spool/*,logs}`
 - `dist/`
 
 ## 日常運用

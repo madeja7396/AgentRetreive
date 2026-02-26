@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sch_contract_policy_v1",
+  "title": "Contract Policy v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "minimums",
+    "baseline_required_placeholders",
+    "run_constraints"
+  ],
+  "properties": {
+    "version": {
+      "const": "contract_policy.v1"
+    },
+    "minimums": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "corpora",
+        "baselines",
+        "tasks_total",
+        "tasks_per_repo",
+        "must_terms_per_task",
+        "anchor_min_length"
+      ],
+      "properties": {
+        "corpora": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "baselines": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "tasks_total": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "tasks_per_repo": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "must_terms_per_task": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "anchor_min_length": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "baseline_required_placeholders": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "run_constraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enforce_latency_order"
+      ],
+      "properties": {
+        "enforce_latency_order": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

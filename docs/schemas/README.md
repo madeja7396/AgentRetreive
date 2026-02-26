@@ -10,6 +10,8 @@
 - `taskset.v1.entry.schema.json`: 評価タスク 1 件の定義（JSONL 行単位）
 - `baselines.v1.schema.json`: 比較ベースライン定義
 - `run_constraints.v1.schema.json`: 実行制約定義
+- `contract_policy.v1.schema.json`: 契約厳格ポリシー定義
+- `daemon_task.v1.schema.json`: 常駐デーモンタスク定義
 
 ## 運用
 

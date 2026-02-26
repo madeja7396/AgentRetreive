@@ -1,0 +1,4 @@
+interface:
+  display_name: "AgentRetrieve Contract Harness"
+  short_description: "Harden AgentRetrieve contract checks"
+  default_prompt: "Enforce strict contract validation, diagnose failures, and patch schema/benchmark/policy files with minimal changes."

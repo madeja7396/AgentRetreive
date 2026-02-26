@@ -35,3 +35,11 @@
 - Rule: 計画初版で「開発成果」と「研究成果」の両方の完了条件を明示する
 - Check: `tasks/research_foundation.md` を追加し、`todo/risk/validation/decisions` に研究項目を反映
 - Status: Closed
+
+### 2026-02-26: 未追跡ファイルの意味確認
+
+- Trigger: 未追跡 `claw.md` を想定外変更として検知後、ユーザーから用途説明があった
+- Root Cause: ファイル検知時に「削除/除外」前提で確認し、活用可能性の探索が遅れた
+- Rule: 想定外ファイルは除外判断の前に、プロジェクト価値へ変換できるかを先に評価する
+- Check: `claw.md` を仕様化し、`agentd` 実装と運用文書へ反映
+- Status: Closed

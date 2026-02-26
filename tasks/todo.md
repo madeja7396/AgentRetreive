@@ -33,6 +33,8 @@
 - [x] 検証マトリクス（`tasks/validation_matrix.md`）を初期化
 - [x] 研究運用基盤（`tasks/research_foundation.md`）を初期化
 - [x] CI/CD 基盤（`ci.yml` / `cd-release.yml` / contract validator）を初期化
+- [x] 実装禁止事項ガイド（`tasks/implementation_donts.md`）を追加
+- [x] 常駐エージェント運用基盤（`agentd` + task schema）を初期化
 
 ### Phase 1: 仕様凍結
 
@@ -143,3 +145,35 @@
 - スタッフエンジニア観点: 実験入力の再利用性と監査性が向上
 - 残課題: 実リポジトリ clone 後の anchor 解決スクリプト実装
 - 判定: `Go`（実験準備として受理）
+
+### 2026-02-26 実装禁止事項レビュー
+
+- 実施内容: `tasks/implementation_donts.md` を追加し、禁止事項をカテゴリ化
+- 検証: 既存方針（SSOT/再現性/評価運用）との整合を確認
+- スタッフエンジニア観点: 実装時の事故を事前に抑制できる
+- 残課題: PR テンプレートへのチェック項目転記
+- 判定: `Go`（運用規約として受理）
+
+### 2026-02-26 実装契約強化・ハーネス厳格化レビュー
+
+- 実施内容: contract policy 導入、validator 強化、CI matrix 化、strict harness ランナー追加
+- 検証: `bash scripts/ci/run_contract_harness.sh` で schema/整合/不変条件が全通過
+- スタッフエンジニア観点: 実装契約の強制力と検出力が大幅に向上
+- 残課題: PR テンプレートと branch protection で運用強制を完成させる
+- 判定: `Go`（実装ガードレールとして受理）
+
+### 2026-02-26 skill 化レビュー
+
+- 実施内容: `skills/agentretrieve-contract-harness/` を作成し、実行手順と失敗プレイブックを整備
+- 検証: `quick_validate.py` でスキル妥当性を確認（valid）
+- スタッフエンジニア観点: 今後の反復改善をスキル経由で標準化できる
+- 残課題: 実運用での失敗事例を references に継続反映
+- 判定: `Go`（運用可能）
+
+### 2026-02-26 claw 常駐化適用レビュー
+
+- 実施内容: `claw.md` を AgentRetrieve 向けに再設計し、`agentd` スプール実装を追加
+- 検証: enqueue -> `agentd --once` の実行経路と strict harness の成功を確認
+- スタッフエンジニア観点: 追加依存なしで継続実行・再試行・回収が可能
+- 残課題: systemd ユニット化と監視メトリクスの追加
+- 判定: `Go`（実運用可能）

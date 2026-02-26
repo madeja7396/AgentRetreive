@@ -12,6 +12,8 @@
 4. `docs/CI_CD.md`
 5. `docs/WORKTREE.md`
 6. `docs/benchmarks/*`
+7. `docs/contracts/*`
+8. `docs/operations/*`
 
 ## 原則
 
