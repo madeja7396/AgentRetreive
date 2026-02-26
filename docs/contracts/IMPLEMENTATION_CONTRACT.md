@@ -13,6 +13,7 @@
 - ベンチマーク入力: `docs/benchmarks/*`
 - 研究テンプレート: `tasks/templates/*.json`
 - 常駐タスク入力: `tasks/templates/daemon_task.v1.json`
+- 実行計画タスク入力: `tasks/project_execution_plan.v1.jsonl`
 - 厳格ポリシー: `docs/contracts/contract_policy.v1.json`
 
 ## 強制ルール

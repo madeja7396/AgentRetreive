@@ -12,6 +12,7 @@
 - `run_constraints.v1.schema.json`: 実行制約定義
 - `contract_policy.v1.schema.json`: 契約厳格ポリシー定義
 - `daemon_task.v1.schema.json`: 常駐デーモンタスク定義
+- `project_execution_task.v1.entry.schema.json`: 実行計画タスク定義（JSONL行単位）
 
 ## 運用
 

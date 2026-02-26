@@ -17,6 +17,7 @@ Workflow: `.github/workflows/ci.yml`
   - JSON 構文検証（`docs/schemas/*.json`, `tasks/templates/*.json`, `docs/contracts/*.json`）
   - schema 検証（テンプレートが schema に準拠）
   - schema 検証（`docs/benchmarks/*` が対応 schema に準拠）
+  - schema 検証（`tasks/project_execution_plan.v1.jsonl` が task schema に準拠）
   - クロスファイル不変条件（重複ID、参照整合、件数下限、レイテンシ順序）
 
 実行スクリプト:

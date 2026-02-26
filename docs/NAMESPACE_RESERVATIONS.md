@@ -84,6 +84,10 @@
 
 - `docs/contracts/contract_policy.v1.json`
 
+`tasks/` 以下の予約:
+
+- `tasks/project_execution_plan.v1.jsonl`
+
 ## 6. 禁止事項
 
 - 予約済み prefix/key の再定義

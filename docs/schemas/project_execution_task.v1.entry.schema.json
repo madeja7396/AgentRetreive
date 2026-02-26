@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sch_project_execution_task_v1_entry",
+  "title": "Project Execution Task v1 Entry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "id",
+    "order",
+    "phase",
+    "title",
+    "action_type",
+    "dependencies",
+    "done_criteria",
+    "status",
+    "register_only"
+  ],
+  "properties": {
+    "version": {
+      "const": "project_execution_task.v1"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^pet_[a-z0-9_]{3,64}$"
+    },
+    "order": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "phase": {
+      "type": "string",
+      "enum": [
+        "phase0_planning",
+        "phase1_spec",
+        "phase2_mvp",
+        "phase3_benchmark",
+        "phase4_data",
+        "phase5_paper",
+        "phase6_go_live",
+        "phase7_release"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3
+    },
+    "action_type": {
+      "type": "string",
+      "enum": [
+        "doc",
+        "implementation",
+        "benchmark",
+        "review",
+        "gate",
+        "ops"
+      ]
+    },
+    "command": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^pet_[a-z0-9_]{3,64}$"
+      }
+    },
+    "done_criteria": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 3
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "registered",
+        "ready",
+        "in_progress",
+        "done",
+        "blocked"
+      ]
+    },
+    "register_only": {
+      "type": "boolean",
+      "const": true
+    }
+  }
+}

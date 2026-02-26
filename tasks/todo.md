@@ -35,6 +35,7 @@
 - [x] CI/CD 基盤（`ci.yml` / `cd-release.yml` / contract validator）を初期化
 - [x] 実装禁止事項ガイド（`tasks/implementation_donts.md`）を追加
 - [x] 常駐エージェント運用基盤（`agentd` + task schema）を初期化
+- [x] 全体実行計画を登録専用タスク（`tasks/project_execution_plan.v1.jsonl`）として追加
 
 ### Phase 1: 仕様凍結
 
@@ -177,3 +178,11 @@
 - スタッフエンジニア観点: 追加依存なしで継続実行・再試行・回収が可能
 - 残課題: systemd ユニット化と監視メトリクスの追加
 - 判定: `Go`（実運用可能）
+
+### 2026-02-26 実行計画タスク登録レビュー
+
+- 実施内容: プロジェクト最初から最後までを `project_execution_plan.v1.jsonl` へ登録（実行は未実施）
+- 検証: JSONL schema 準拠、依存関係、順序連番、phase網羅を契約ハーネスで確認
+- スタッフエンジニア観点: 実行前に全工程の可視化・監査が可能
+- 残課題: 将来の自動実行連携時に task type マッピングを追加
+- 判定: `Go`（登録台帳として受理）

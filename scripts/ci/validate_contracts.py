@@ -26,6 +26,8 @@ SCHEMAS = {
     "taskset_entry": ROOT / "docs/schemas/taskset.v1.entry.schema.json",
     "contract_policy": ROOT / "docs/schemas/contract_policy.v1.schema.json",
     "daemon_task": ROOT / "docs/schemas/daemon_task.v1.schema.json",
+    "project_execution_task_entry": ROOT
+    / "docs/schemas/project_execution_task.v1.entry.schema.json",
 }
 
 SAMPLES = {
@@ -47,6 +49,7 @@ JSON_CHECK_PATHS = [
 
 JSONL_SAMPLES = {
     "taskset_entry": ROOT / "docs/benchmarks/taskset.v1.jsonl",
+    "project_execution_task_entry": ROOT / "tasks/project_execution_plan.v1.jsonl",
 }
 
 
@@ -314,6 +317,73 @@ def check_contract_invariants(taskset_entries: list[dict[str, Any]]) -> int:
     return errors
 
 
+def check_project_execution_plan_invariants(entries: list[dict[str, Any]]) -> int:
+    errors = 0
+    required_phases = {
+        "phase0_planning",
+        "phase1_spec",
+        "phase2_mvp",
+        "phase3_benchmark",
+        "phase4_data",
+        "phase5_paper",
+        "phase6_go_live",
+        "phase7_release",
+    }
+
+    ids = [e["id"] for e in entries]
+    dup_ids = _dup_values(ids)
+    if dup_ids:
+        errors += 1
+        print(f"[NG] invariant: duplicate project execution task ids -> {dup_ids}")
+    else:
+        print("[OK] invariant: project execution task ids are unique")
+
+    orders = [int(e["order"]) for e in entries]
+    if len(set(orders)) != len(orders):
+        errors += 1
+        print("[NG] invariant: duplicate order values in project execution plan")
+    else:
+        print("[OK] invariant: project execution task order values are unique")
+
+    if orders and sorted(orders) != list(range(1, len(orders) + 1)):
+        errors += 1
+        print("[NG] invariant: project execution order is not contiguous from 1..N")
+    else:
+        print("[OK] invariant: project execution order is contiguous")
+
+    phase_set = {e["phase"] for e in entries}
+    missing_phases = sorted(required_phases - phase_set)
+    if missing_phases:
+        errors += 1
+        print(f"[NG] invariant: missing phases in project execution plan -> {missing_phases}")
+    else:
+        print("[OK] invariant: all required phases are present in execution plan")
+
+    entry_map = {e["id"]: e for e in entries}
+    for e in entries:
+        if e["status"] != "registered":
+            errors += 1
+            print(f"[NG] invariant: task '{e['id']}' status must be 'registered'")
+        if e["register_only"] is not True:
+            errors += 1
+            print(f"[NG] invariant: task '{e['id']}' register_only must be true")
+        for dep in e["dependencies"]:
+            if dep not in entry_map:
+                errors += 1
+                print(f"[NG] invariant: task '{e['id']}' has unknown dependency '{dep}'")
+                continue
+            if int(entry_map[dep]["order"]) >= int(e["order"]):
+                errors += 1
+                print(
+                    f"[NG] invariant: task '{e['id']}' dependency '{dep}' "
+                    "must have smaller order"
+                )
+
+    if errors == 0:
+        print("[OK] invariant: project execution plan checks passed")
+    return errors
+
+
 def main() -> int:
     total_errors = 0
     total_errors += check_required_files()
@@ -323,8 +393,20 @@ def main() -> int:
     jsonl_errors, parsed_jsonl = validate_jsonl_samples()
     total_errors += jsonl_errors
 
-    if jsonl_errors == 0 and "taskset_entry" in parsed_jsonl:
-        total_errors += check_contract_invariants(parsed_jsonl["taskset_entry"])
+    if jsonl_errors == 0:
+        if "taskset_entry" in parsed_jsonl:
+            total_errors += check_contract_invariants(parsed_jsonl["taskset_entry"])
+        else:
+            total_errors += 1
+            print("[NG] invariant: missing parsed taskset_entry JSONL")
+
+        if "project_execution_task_entry" in parsed_jsonl:
+            total_errors += check_project_execution_plan_invariants(
+                parsed_jsonl["project_execution_task_entry"]
+            )
+        else:
+            total_errors += 1
+            print("[NG] invariant: missing parsed project_execution_task_entry JSONL")
     else:
         total_errors += 1
         print("[NG] invariant: skipped cross-file checks because JSONL validation failed")

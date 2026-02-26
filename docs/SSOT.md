@@ -27,6 +27,7 @@
 | Benchmark Inputs v1 | `docs/benchmarks/*` | 評価コーパス、タスク、ベースライン、実行制約 |
 | Implementation Contract v1 | `docs/contracts/*` | 契約ポリシーと実装ガードレール |
 | Agent Daemon Contract v1 | `docs/schemas/daemon_task.v1.schema.json` | 常駐タスク契約 |
+| Project Execution Tasks v1 | `tasks/project_execution_plan.v1.jsonl` | 登録専用の全体実行計画 |
 | 計画進行 | `tasks/todo.md` | 実行フェーズ、ゲート、レビュー |
 | リスク管理 | `tasks/risk_register.md` | リスクと緩和策 |
 | 検証定義 | `tasks/validation_matrix.md` | 検証方法と exit criteria |
