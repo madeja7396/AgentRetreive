@@ -1,0 +1,168 @@
+{
+  "version": "corpus.v1.1",
+  "note": "Extended corpus for major-language coverage across frontend/backend and non-C/Python syntax families.",
+  "corpora": [
+    {
+      "id": "ripgrep",
+      "url": "https://github.com/BurntSushi/ripgrep",
+      "commit": "af60c2d",
+      "tag": "15.1.0",
+      "license": "Unlicense OR MIT",
+      "primary_language": "Rust",
+      "notes": "Search tool codebase with CLI, ignore, regex, docs, and benchmarks."
+    },
+    {
+      "id": "fd",
+      "url": "https://github.com/sharkdp/fd",
+      "commit": "d38148f",
+      "tag": "v10.3.0",
+      "license": "Apache-2.0 OR MIT",
+      "primary_language": "Rust",
+      "notes": "File discovery tool with practical search and ignore behavior."
+    },
+    {
+      "id": "fzf",
+      "url": "https://github.com/junegunn/fzf",
+      "commit": "b908f7a",
+      "tag": "v0.68.0",
+      "license": "MIT",
+      "primary_language": "Go",
+      "notes": "Interactive filtering tool with shell integration and env-heavy usage."
+    },
+    {
+      "id": "curl",
+      "url": "https://github.com/curl/curl",
+      "commit": "2eebc58",
+      "tag": "curl-8_18_0",
+      "license": "MIT-like",
+      "primary_language": "C",
+      "notes": "Large C codebase with docs, src/lib, and tests."
+    },
+    {
+      "id": "fmt",
+      "url": "https://github.com/fmtlib/fmt",
+      "commit": "407c905",
+      "tag": "12.1.0",
+      "license": "MIT",
+      "primary_language": "C++",
+      "notes": "C++ library with headers, benchmarks, and build configuration details."
+    },
+    {
+      "id": "pytest",
+      "url": "https://github.com/pytest-dev/pytest",
+      "commit": "2390610",
+      "tag": "v7.4.3",
+      "license": "MIT",
+      "primary_language": "Python",
+      "notes": "Python testing framework with plugin system, fixtures, and assertion rewriting."
+    },
+    {
+      "id": "cli",
+      "url": "https://github.com/cli/cli",
+      "commit": "cf862d6",
+      "tag": "v2.87.3",
+      "license": "MIT",
+      "primary_language": "Go",
+      "notes": "GitHub CLI tool for command-line GitHub operations with API integration."
+    },
+    {
+      "id": "axios",
+      "url": "https://github.com/axios/axios",
+      "commit": "9f6f97b",
+      "tag": "v1.8.4",
+      "license": "MIT",
+      "primary_language": "JavaScript",
+      "notes": "HTTP client library representative for JavaScript ecosystem."
+    },
+    {
+      "id": "typescript",
+      "url": "https://github.com/microsoft/TypeScript",
+      "commit": "beb69e4",
+      "tag": "v5.8.2",
+      "license": "Apache-2.0",
+      "primary_language": "TypeScript",
+      "notes": "Core TypeScript compiler/tooling repository for TS language coverage."
+    },
+    {
+      "id": "gson",
+      "url": "https://github.com/google/gson",
+      "commit": "29e3d1d",
+      "tag": "gson-parent-2.12.1",
+      "license": "Apache-2.0",
+      "primary_language": "Java",
+      "notes": "Widely used Java JSON serialization/deserialization library."
+    },
+    {
+      "id": "cabal",
+      "url": "https://github.com/haskell/cabal",
+      "commit": "d265cc2",
+      "tag": "cabal-install-v3.14.2.0",
+      "license": "BSD-3-Clause",
+      "primary_language": "Haskell",
+      "notes": "Official Haskell package/build toolchain repository."
+    },
+    {
+      "id": "elixir",
+      "url": "https://github.com/elixir-lang/elixir",
+      "commit": "78f63d0",
+      "tag": "v1.17.3",
+      "license": "Apache-2.0",
+      "primary_language": "Elixir",
+      "notes": "Core Elixir language implementation on BEAM runtime."
+    },
+    {
+      "id": "aspnetcore",
+      "url": "https://github.com/dotnet/aspnetcore",
+      "commit": "704f7cb",
+      "tag": "v9.0.2",
+      "license": "MIT",
+      "primary_language": "C#",
+      "notes": "Representative large-scale C# backend/web framework codebase."
+    },
+    {
+      "id": "symfony",
+      "url": "https://github.com/symfony/symfony",
+      "commit": "f6385e9",
+      "tag": "v7.2.5",
+      "license": "MIT",
+      "primary_language": "PHP",
+      "notes": "Widely adopted PHP framework ecosystem repository."
+    },
+    {
+      "id": "rails",
+      "url": "https://github.com/rails/rails",
+      "commit": "3235827",
+      "tag": "v8.0.2",
+      "license": "MIT",
+      "primary_language": "Ruby",
+      "notes": "Dominant Ruby web framework for backend application development."
+    },
+    {
+      "id": "ktor",
+      "url": "https://github.com/ktorio/ktor",
+      "commit": "7b5e313",
+      "tag": "3.1.2",
+      "license": "Apache-2.0",
+      "primary_language": "Kotlin",
+      "notes": "Kotlin backend framework with coroutine-centric architecture."
+    },
+    {
+      "id": "swiftpm",
+      "url": "https://github.com/swiftlang/swift-package-manager",
+      "commit": "bc68941",
+      "tag": "swift-6.0.3-RELEASE",
+      "license": "Apache-2.0",
+      "primary_language": "Swift",
+      "notes": "Swift ecosystem core package manager and build tool."
+    },
+    {
+      "id": "flutter",
+      "url": "https://github.com/flutter/flutter",
+      "commit": "35c388a",
+      "tag": "3.29.0",
+      "license": "BSD-3-Clause",
+      "primary_language": "Dart",
+      "notes": "Mainstream Dart-based UI framework for cross-platform frontend apps."
+    }
+  ]
+}

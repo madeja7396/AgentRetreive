@@ -25,6 +25,8 @@
 | Dataset Manifest v1 | `docs/schemas/dataset_manifest.v1.schema.json` | データ来歴契約 |
 | Experiment Run Record v1 | `docs/schemas/experiment_run_record.v1.schema.json` | 実験再現契約 |
 | Benchmark Inputs v1 | `docs/benchmarks/*` | 評価コーパス、タスク、ベースライン、実行制約 |
+| Experiment Findings v2 | `docs/research/experiment_findings_v2.md` | 最新実験結果（7リポジトリ35タスク） |
+| Research Roadmap | `docs/research/roadmap.md` | 改善計画と優先順位 |
 | Implementation Contract v1 | `docs/contracts/*` | 契約ポリシーと実装ガードレール |
 | Agent Daemon Contract v1 | `docs/schemas/daemon_task.v1.schema.json` | 常駐タスク契約 |
 | Project Execution Tasks v1 | `tasks/project_execution_plan.v1.jsonl` | 登録専用の全体実行計画 |
