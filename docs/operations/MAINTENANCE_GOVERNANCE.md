@@ -1,6 +1,6 @@
 # Maintenance Governance Manual
 
-更新日: 2026-02-28
+更新日: 2026-03-01
 
 ## 目的
 
@@ -75,3 +75,4 @@
 - `tasks/todo.md` の未完了項目に owner/期限があるか
 - `tasks/lessons.md` が最新インシデントを反映しているか
 - `skills/CATALOG.yaml` の `owner` が `owners` 定義IDに一致しているか
+- `docs/operations/ASSET_CLASSIFICATION.md` の status と導線が最新か

@@ -1,6 +1,6 @@
 # Benchmark Inputs
 
-更新日: 2026-02-27
+更新日: 2026-03-01
 
 `give.md` で提示された評価設計を、実行可能な入力資産へ固定した。
 
@@ -29,6 +29,12 @@
 - `docs/benchmarks/taskset.v2.full.jsonl` ← **最新タスクセット（35タスク）**
 - `docs/benchmarks/baselines.v1.json`
 - `docs/benchmarks/run_constraints.v1.json`
+
+## Taskset Registry（分類）
+
+- `active`: `taskset.v2.full.jsonl`（現行評価SSOT）
+- `incubation`: `taskset.v2.jsonl`, `taskset.v2.1.jsonl`
+- `archive`: `taskset.v1.jsonl`, `taskset.v1.fixed.jsonl`, `taskset.v1.jsonl.bak`
 
 ## Language Coverage
 
@@ -85,3 +91,10 @@ make auto-adapt-all
 - `taskset.v1.jsonl` は 1 行 1 タスク
 - `gold` は壊れにくさ優先で `file + anchor` を採用
 - v2.0では難易度別（Easy/Medium/Hard）とタスクタイプ別の評価を導入
+
+## 補助分析ドキュメント（Incubation）
+
+- `docs/benchmarks/CORPUS_EXTENSION_PLAN.md`
+- `docs/benchmarks/DATASET_BIAS_ANALYSIS.md`
+- `docs/benchmarks/OPTIMAL_PARAMETER_RATIONALE.md`
+- `docs/benchmarks/VALIDITY_SUMMARY.md`

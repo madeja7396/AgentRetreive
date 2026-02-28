@@ -703,3 +703,31 @@
 - 残課題:
   - なし
 - 判定: `Go`（復元後継続スコープを完了）
+
+## 17. 未統合資産の分類・接続（2026-03-01）
+
+### 17.1 実施タスク
+
+- [x] 未接続資産を `active / incubation / archive` で分類
+- [x] 分類台帳 `docs/operations/ASSET_CLASSIFICATION.md` を作成
+- [x] `scripts/README.md` を新規作成し scripts の運用分類を定義
+- [x] docs index（`docs/README.md`, `docs/operations/README.md`, `docs/benchmarks/README.md`）へ導線を接続
+- [x] 監査ルールに資産分類の鮮度チェックを追加
+
+### 17.2 2026-03-01 分類・接続レビュー
+
+- 実施内容:
+  - 未参照だった knowledge/script/dataset/root-note を棚卸しし、分類台帳へ登録
+  - benchmark 補助スクリプト群を `incubation` として明示し、標準導線（pipeline/ci/daemon）と分離
+  - taskset ファイル群を `active/incubation/archive` で明示して誤参照を防止
+  - docs index に `ASSET_CLASSIFICATION.md` と `scripts/README.md` を追加して探索導線を固定
+- 検証:
+  - `rg -n --fixed-strings "docs/operations/ASSET_CLASSIFICATION.md" docs/README.md docs/operations/README.md scripts/README.md` で参照接続を確認
+  - `rg -n --fixed-strings "scripts/README.md" docs/README.md docs/operations/ASSET_CLASSIFICATION.md` で scripts 台帳の導線接続を確認
+  - `python3 scripts/ci/validate_contracts.py` => PASS
+- スタッフエンジニア観点:
+  - 孤立資産を「削除ではなく分類」で可視化し、運用導線と履歴資産の境界を明確化できた
+  - 今後の整理は `ASSET_CLASSIFICATION.md` 更新を入口にして、属人的な判断を減らせる
+- 残課題:
+  - `incubation` scripts のうち再利用予定がないものは段階的に `archive` へ移行する運用判断が必要
+- 判定: `Go`（分類・接続の初期整備を完了）

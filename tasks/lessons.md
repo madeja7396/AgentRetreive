@@ -327,6 +327,26 @@
 
 ---
 
+### 2026-03-01: 大規模化した資産は「削除前に分類台帳へ接続」する
+
+**観測事実**:
+- docs/scripts に有用資産が残っていても、index から参照されないと実質的に存在しないのと同じ状態になる
+- 一部 benchmark スクリプトは本番導線では未使用だが、調査・比較で再利用価値がある
+- taskset の旧版/補修版/バックアップが混在していると、運用時に誤参照のリスクが上がる
+
+**教訓**:
+1. 未接続資産は即削除ではなく `active/incubation/archive` の分類で可視化するべき
+2. scripts は「標準導線」と「補助導線」を分離して明示しないと属人的運用になる
+3. データセット系ファイルは status を明記した registry を用意しないと SSOT が崩れる
+
+**対応**:
+- `docs/operations/ASSET_CLASSIFICATION.md` を新規追加し、knowledge/script/data/root-note を分類
+- `scripts/README.md` を追加し、active と incubation スクリプトを明示
+- `docs/README.md`, `docs/operations/README.md`, `docs/benchmarks/README.md` に参照導線を追加
+- `MAINTENANCE_GOVERNANCE.md` の週次監査に分類台帳の鮮度チェックを追加
+
+---
+
 ## 全般的な原則
 
 1. **「シンプルさ」はパフォーマンスの敵ではない**:
@@ -343,4 +363,4 @@
 
 ---
 
-*最終更新: 2026-02-28*
+*最終更新: 2026-03-01*

@@ -1,6 +1,6 @@
 # Docs Index
 
-更新日: 2026-02-28
+更新日: 2026-03-01
 
 このディレクトリは、実装と研究の共通契約を管理する。
 
@@ -19,14 +19,17 @@
 3. `docs/schemas/*.schema.json` - データスキーマ
 4. `docs/CI_CD.md` - CI/CD設定
 5. `docs/WORKTREE.md` - ワークツリー管理
+6. `docs/contracts/IMPLEMENTATION_CONTRACT.md` - 実装契約の運用ルール
+7. `docs/schemas/README.md` - schema索引
 
 ### 研究者向け
 1. `docs/papers/PROPOSED_METHOD.md` - 提案手法
 2. `docs/papers/RELATED_WORK.md` - 関連研究
-3. `docs/benchmarks/TASKSET_DESIGN_V2.md` - タスク設計
-4. `docs/benchmarks/DIFFICULTY_FRAMEWORK.md` - 難易度枠組み
-5. `docs/contracts/*` - 実装契約
-6. `docs/operations/*` - 運用ドキュメント
+3. `docs/papers/PAPER_OUTLINE.md` - 論文構成ドラフト
+4. `docs/benchmarks/TASKSET_DESIGN_V2.md` - タスク設計
+5. `docs/benchmarks/DIFFICULTY_FRAMEWORK.md` - 難易度枠組み
+6. `docs/contracts/*` - 実装契約
+7. `docs/operations/*` - 運用ドキュメント
 
 ## 新規実験者向けガイド
 
@@ -66,11 +69,22 @@ make experiment-ready
 - `docs/operations/RUNBOOK.md` - 日次/週次運用、KPI更新手順、障害一次対応
 - `docs/operations/SIER_SOUL.md` - 行動原則（属人化排除の基準）
 - `docs/operations/SKILLS_OPERATING_MODEL.md` - skill階層運用モデル
+- `docs/operations/ASSET_CLASSIFICATION.md` - 資産分類台帳（active/incubation/archive）
 
 ## Skills 管理
 
 - `skills/README.md` - skill階層構造（L1/L2/L3）
 - `skills/CATALOG.yaml` - skill台帳（owner/status/path）
+
+## Scripts 管理
+
+- `scripts/README.md` - scripts分類台帳（標準導線/補助導線）
+
+## ルート資料（履歴）
+
+- `PROPOSED_METHOD_COMPLETE.md` - 提案内容の要約スナップショット
+- `RIPGREP_INVESTIGATION_REPORT.md` - 過去インシデント調査ログ
+- `outline.md`, `plan.md`, `give.md` - 初期検討・入力履歴
 
 ## 原則
 

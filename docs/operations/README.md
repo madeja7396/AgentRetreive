@@ -1,6 +1,6 @@
 # Operations Docs Index
 
-更新日: 2026-02-28
+更新日: 2026-03-01
 
 ## 目的
 
@@ -16,9 +16,11 @@
    日次/週次運用、KPI更新、障害一次対応
 4. `SKILLS_OPERATING_MODEL.md`  
    skill階層化の運用モデル
-5. `AGENTD.md`  
+5. `ASSET_CLASSIFICATION.md`  
+   未統合ナレッジ/スクリプトの分類台帳（active/incubation/archive）
+6. `AGENTD.md`  
    デーモン実行の運用詳細
-6. `../../skills/CATALOG.yaml`  
+7. `../../skills/CATALOG.yaml`  
    skill owner（team/contact/escalation）台帳
 
 ## 実行前チェック
