@@ -268,6 +268,65 @@
 
 ---
 
+### 2026-02-28: KPI不整合は「index整合ゲート」と「SSOT分離」で防ぐ
+
+**観測事実**:
+- balanced corpus 用に再構築した index（24 docs/repo）が raw index を上書きし、taskset gold file の大半が index から消えていた
+- その状態で評価すると `aggregate_results.json` の指標が低下し、過去の `final_summary.json` と整合しなくなる
+- `Makefile` の `validate`/`report` 導線にも実行不能箇所があり、運用上の検証信頼性が下がっていた
+
+**教訓**:
+1. 評価前に「taskset gold file が index に存在するか」を機械的に検証し、欠落時は即失敗させるべき
+2. KPIのSSOTは1つに固定し、探索集計（`aggregate_results.json`）と最終評価（`final_summary.json`）を混同しない
+3. 運用導線（Make target）は定期的に smoke 実行し、参照切れを早期に検知する
+
+**対応**:
+- `scripts/pipeline/check_gold_coverage.py` を追加し、gold coverage を検証
+- `run_experiment_route.py` に gold coverage ゲートを追加（最終評価前）
+- `Makefile validate` を `bash scripts/ci/run_contract_harness.sh` に修正
+- `scripts/benchmark/generate_report.py` を追加し、`make report` を復旧
+- `docs/PIPELINE_GUIDE.md` で `final_summary.json` を公式KPIのSSOTとして明文化
+
+---
+
+### 2026-02-28: 大規模化フェーズでは「運用文書 + skill階層」を同時に整備する
+
+**観測事実**:
+- 改修点がコードだけでなく、運用・評価・報告に跨るため、実装だけ直しても再発を防げない
+- skill が flat 構造だと「どの文脈で使う skill か」が曖昧になり、適用判断が属人化する
+
+**教訓**:
+1. 重要改修は「コード修正」と「運用マニュアル更新」をセットで完了条件にするべき
+2. skill は階層（core/ops/program）で責務分離しないと、保守コストが増える
+3. catalog（owner/status/path）を持たない skill 運用は、陳腐化と重複を招く
+
+**対応**:
+- `docs/operations/MAINTENANCE_GOVERNANCE.md`, `SIER_SOUL.md`, `RUNBOOK.md`, `SKILLS_OPERATING_MODEL.md` を追加
+- `skills/README.md` と `skills/CATALOG.yaml` を追加し、L1/L2/L3 階層を導入
+- 既存 flat skill は互換維持しつつ、新規追加は階層配下を正規ルートに固定
+
+---
+
+### 2026-02-28: 復元フェーズ後は owner 情報を「実体ID + 連絡先」で固定する
+
+**観測事実**:
+- 復元後はコード自体が復旧しても、運用責任の所在が role 名だけだと引き継ぎ時に判断が止まる
+- `skills/CATALOG.yaml` に owner 実体（team/contact/escalation）がないと、障害時の連絡経路が文書間で分散する
+- 復元直後の再検証を省くと、運用導線の破損を見落としやすい
+
+**教訓**:
+1. owner は抽象 role 名でなく、catalog 上の一意IDと連絡先を持たせるべき
+2. skill 運用文書と runbook は owner directory を共通参照し、重複定義を避けるべき
+3. 復元後は必ず品質ゲート（test/contract/make導線）を再実行してから完了判定するべき
+
+**対応**:
+- `skills/CATALOG.yaml` に `owners` を追加し、`team/contact/escalation` を定義
+- 各 skill の `owner` を `owners` 参照IDへ移行（`core_quality`, `ops_runtime`, `ops_governance`, `program_office`）
+- `docs/operations/MAINTENANCE_GOVERNANCE.md`, `RUNBOOK.md`, `SKILLS_OPERATING_MODEL.md`, `skills/README.md` を同期更新
+- `pytest -q`, `python3 scripts/ci/validate_contracts.py`, `make validate`, `make report`, `make experiment-ready` を再実行
+
+---
+
 ## 全般的な原則
 
 1. **「シンプルさ」はパフォーマンスの敵ではない**:
@@ -284,4 +343,4 @@
 
 ---
 
-*最終更新: 2026-02-27*
+*最終更新: 2026-02-28*

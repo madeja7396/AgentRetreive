@@ -1,0 +1,54 @@
+version: 1
+updated_at: "2026-02-28"
+
+layers:
+  l1_core:
+    description: "品質ゲート・契約整合などの必須スキル"
+  l2_ops:
+    description: "運用実行・変更管理・KPI運用スキル"
+  l3_program:
+    description: "組織運営・統治標準化スキル"
+
+owners:
+  core_quality:
+    team: "AgentRetrieve Core Quality Team"
+    contact: "core-quality-oncall"
+    escalation: "ops_governance"
+  ops_runtime:
+    team: "AgentRetrieve Runtime Operations Team"
+    contact: "ops-runtime-oncall"
+    escalation: "ops_governance"
+  ops_governance:
+    team: "AgentRetrieve Governance Operations Team"
+    contact: "ops-governance-oncall"
+    escalation: "program_office"
+  program_office:
+    team: "AgentRetrieve Program Office"
+    contact: "program-office"
+    escalation: "program_office"
+
+skills:
+  - id: l1_core.quality.contract-harness
+    path: skills/l1_core/quality/contract-harness/SKILL.md
+    owner: core_quality
+    status: active
+  - id: l2_ops.runtime.claw-daemon
+    path: skills/l2_ops/runtime/claw-daemon/SKILL.md
+    owner: ops_runtime
+    status: active
+  - id: l2_ops.governance.change-control
+    path: skills/l2_ops/governance/change-control/SKILL.md
+    owner: ops_governance
+    status: active
+  - id: l2_ops.governance.kpi-release
+    path: skills/l2_ops/governance/kpi-release/SKILL.md
+    owner: ops_governance
+    status: active
+  - id: l3_program.governance.maintenance-standard
+    path: skills/l3_program/governance/maintenance-standard/SKILL.md
+    owner: program_office
+    status: active
+
+legacy_flat_skills:
+  - skills/agentretrieve-contract-harness/SKILL.md
+  - skills/agentretrieve-claw-daemon/SKILL.md

@@ -1,6 +1,6 @@
 # Docs Index
 
-更新日: 2026-02-27
+更新日: 2026-02-28
 
 このディレクトリは、実装と研究の共通契約を管理する。
 
@@ -11,6 +11,7 @@
 2. `docs/research/roadmap.md` - 今後の改善計画
 3. `docs/benchmarks/README.md` - 評価データセット
 4. `docs/benchmarks/TASKSET_V2_EVALUATION.md` - v2.0評価詳細
+5. `docs/operations/MAINTENANCE_GOVERNANCE.md` - 保守運用の標準統治
 
 ### 実装者向け
 1. `docs/SSOT.md` - 真実情報源定義
@@ -57,6 +58,19 @@ make experiment-ready
 ```
 
 詳細は `docs/PIPELINE_GUIDE.md` を参照。
+
+## 運用マニュアル
+
+- `docs/operations/README.md` - 運用ドキュメントの参照順序
+- `docs/operations/MAINTENANCE_GOVERNANCE.md` - してよいこと/悪いこと、RACI、統治フロー
+- `docs/operations/RUNBOOK.md` - 日次/週次運用、KPI更新手順、障害一次対応
+- `docs/operations/SIER_SOUL.md` - 行動原則（属人化排除の基準）
+- `docs/operations/SKILLS_OPERATING_MODEL.md` - skill階層運用モデル
+
+## Skills 管理
+
+- `skills/README.md` - skill階層構造（L1/L2/L3）
+- `skills/CATALOG.yaml` - skill台帳（owner/status/path）
 
 ## 原則
 

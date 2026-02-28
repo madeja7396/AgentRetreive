@@ -551,20 +551,28 @@ def _run(cmd: list[str], cwd: Path) -> None:
     subprocess.run(cmd, cwd=str(cwd), check=True)
 
 
+def _as_config_path(path: Path, root: Path) -> str:
+    if path.is_absolute() and path.is_relative_to(root):
+        return str(path.relative_to(root)).replace("\\", "/")
+    return str(path).replace("\\", "/")
+
+
 def _build_pipeline_config(
     base_config: dict[str, Any],
     selected: list[Corpus],
     taskset_path: Path,
     source_paths: dict[str, str],
+    index_paths: dict[str, str],
 ) -> dict[str, Any]:
     repos = []
     for corpus in selected:
         source_path = source_paths.get(corpus.id, f"artifacts/datasets/raw/{corpus.id}")
+        index_path = index_paths.get(corpus.id, f"artifacts/datasets/{corpus.id}.index.json")
         repos.append(
             {
                 "id": corpus.id,
                 "language": _normalize_lang(corpus.primary_language),
-                "index": f"artifacts/datasets/{corpus.id}.index.json",
+                "index": index_path,
                 "source": source_path,
             }
         )
@@ -638,6 +646,16 @@ def main() -> int:
         help="Balanced corpus root directory.",
     )
     parser.add_argument(
+        "--raw-index-root",
+        default="artifacts/datasets",
+        help="Output root for raw indices (official evaluation).",
+    )
+    parser.add_argument(
+        "--balanced-index-root",
+        default="artifacts/datasets/balanced_index",
+        help="Output root for balanced indices (parameter search).",
+    )
+    parser.add_argument(
         "--skip-clone",
         action="store_true",
         help="Skip corpus clone/update step.",
@@ -677,6 +695,8 @@ def main() -> int:
     symbol_output_path = (root / args.symbol_weights_output).resolve()
     output_dir = (root / args.output_dir).resolve()
     balanced_root = (root / args.balanced_root).resolve()
+    raw_index_root = (root / args.raw_index_root).resolve()
+    balanced_index_root = (root / args.balanced_index_root).resolve()
 
     manager = CorpusManager(root)
     corpora = manager.load_corpus_manifest(manifest_path)
@@ -716,18 +736,26 @@ def main() -> int:
     print(f"Missing major languages: {missing_major or 'none'}")
 
     index_stats: dict[str, dict[str, int]] = {}
-    source_dirs: dict[str, Path] = {
+    raw_index_stats: dict[str, dict[str, int]] = {}
+    raw_source_dirs: dict[str, Path] = {
         corpus.id: root / f"artifacts/datasets/raw/{corpus.id}" for corpus in selected
     }
+    source_dirs: dict[str, Path] = dict(raw_source_dirs)
     source_paths: dict[str, str] = {
         corpus.id: f"artifacts/datasets/raw/{corpus.id}" for corpus in selected
     }
+    raw_index_abs_paths: dict[str, Path] = {
+        corpus.id: raw_index_root / f"{corpus.id}.index.json" for corpus in selected
+    }
+    search_index_abs_paths: dict[str, Path] = dict(raw_index_abs_paths)
     fairness_summary: dict[str, Any] = {"enabled": not args.no_balance}
     complex_repo_id = ""
+    index_mode = "raw_only" if args.no_balance else "balanced_search_raw_eval"
 
     if args.dry_run and not args.no_balance:
         for corpus in selected:
             source_paths[corpus.id] = f"artifacts/datasets/balanced_raw/{corpus.id}"
+            search_index_abs_paths[corpus.id] = balanced_index_root / f"{corpus.id}.index.json"
         fairness_summary["planned"] = True
 
     if not args.skip_clone:
@@ -739,12 +767,13 @@ def main() -> int:
         balanced_dirs, fairness_info, complex_repo_id = _prepare_balanced_views(
             root=root,
             selected=selected,
-            raw_source_dirs=source_dirs,
+            raw_source_dirs=raw_source_dirs,
             balanced_root=balanced_root,
         )
         source_dirs = balanced_dirs
         for repo_id, path in balanced_dirs.items():
             source_paths[repo_id] = str(path.relative_to(root)).replace("\\", "/")
+            search_index_abs_paths[repo_id] = balanced_index_root / f"{repo_id}.index.json"
         fairness_summary.update(fairness_info)
         print(
             f"[balance] target_files={fairness_info['target_code_files_per_repo']} "
@@ -758,12 +787,22 @@ def main() -> int:
         )
         print(f"[balance] complex_repo={complex_repo_id}")
 
+    search_index_paths: dict[str, str] = {
+        repo_id: _as_config_path(index_path, root)
+        for repo_id, index_path in search_index_abs_paths.items()
+    }
+    raw_index_paths: dict[str, str] = {
+        repo_id: _as_config_path(index_path, root)
+        for repo_id, index_path in raw_index_abs_paths.items()
+    }
+
     base_config = yaml.safe_load(base_config_path.read_text(encoding="utf-8"))
     generated_config = _build_pipeline_config(
         base_config=base_config,
         selected=selected,
         taskset_path=taskset_path,
         source_paths=source_paths,
+        index_paths=search_index_paths,
     )
     generated_config_path.parent.mkdir(parents=True, exist_ok=True)
     generated_config_path.write_text(
@@ -779,12 +818,23 @@ def main() -> int:
             source_dir = source_dirs[corpus.id]
             if not source_dir.exists():
                 raise RuntimeError(f"Source directory not found: {source_dir}")
-            index_path = root / f"artifacts/datasets/{corpus.id}.index.json"
+            index_path = search_index_abs_paths[corpus.id]
             stats = _build_index(source_dir, index_path)
             index_stats[corpus.id] = stats
             print(
-                f"[index] {corpus.id}: docs={stats['documents']} terms={stats['terms']} files={stats['indexed_files']}"
+                f"[index][search] {corpus.id}: docs={stats['documents']} terms={stats['terms']} files={stats['indexed_files']}"
             )
+
+            raw_index_path = raw_index_abs_paths[corpus.id]
+            raw_source_dir = raw_source_dirs[corpus.id]
+            if raw_index_path != index_path:
+                if not raw_source_dir.exists():
+                    raise RuntimeError(f"Raw source directory not found: {raw_source_dir}")
+                raw_stats = _build_index(raw_source_dir, raw_index_path)
+                raw_index_stats[corpus.id] = raw_stats
+                print(
+                    f"[index][raw] {corpus.id}: docs={raw_stats['documents']} terms={raw_stats['terms']} files={raw_stats['indexed_files']}"
+                )
 
     did_symbol_fit = False
     if not args.skip_symbol_fit:
@@ -831,8 +881,12 @@ def main() -> int:
         "selected_repos_with_tasks": selected_with_tasks,
         "missing_major_languages": missing_major,
         "fairness": fairness_summary,
+        "index_mode": index_mode,
+        "search_index_paths": search_index_paths,
+        "raw_index_paths": raw_index_paths,
         "complex_repo": complex_repo_id or None,
         "index_stats": index_stats,
+        "raw_index_stats": raw_index_stats,
         "steps": {
             "clone": not args.skip_clone,
             "index": not args.skip_index,

@@ -48,7 +48,7 @@ test:
 
 validate:
 	@echo "Running contract harness..."
-	@python3 scripts/ci/run_contract_harness.sh
+	@bash scripts/ci/run_contract_harness.sh
 
 clean:
 	@echo "Cleaning experiment outputs..."
@@ -59,7 +59,8 @@ clean:
 report:
 	@echo "Generating final report..."
 	@python3 scripts/benchmark/generate_report.py \
-		--input artifacts/experiments/pipeline/aggregate_results.json \
+		--summary artifacts/experiments/pipeline/final_summary.json \
+		--aggregate artifacts/experiments/pipeline/aggregate_results.json \
 		--output artifacts/experiments/FINAL_PIPELINE_REPORT.md
 
 # Development targets

@@ -8,6 +8,8 @@ import shlex
 import subprocess
 from pathlib import Path
 
+import yaml
+
 
 def _run(cmd: list[str], cwd: Path, dry_run: bool) -> None:
     rendered = " ".join(shlex.quote(part) for part in cmd)
@@ -15,6 +17,42 @@ def _run(cmd: list[str], cwd: Path, dry_run: bool) -> None:
     if dry_run:
         return
     subprocess.run(cmd, cwd=str(cwd), check=True)
+
+
+def _resolve_path(root: Path, raw_path: str) -> Path:
+    path = Path(raw_path)
+    if path.is_absolute():
+        return path
+    return (root / path).resolve()
+
+
+def _build_raw_eval_config(
+    root: Path,
+    source_config_path: Path,
+    output_path: Path,
+    dry_run: bool,
+) -> Path:
+    if dry_run:
+        return output_path
+
+    config = yaml.safe_load(source_config_path.read_text(encoding="utf-8"))
+    repos = config.get("repositories", [])
+    rewritten: list[dict] = []
+    for repo in repos:
+        if not isinstance(repo, dict):
+            continue
+        repo_id = repo.get("id")
+        if not isinstance(repo_id, str) or not repo_id:
+            continue
+        updated = dict(repo)
+        updated["index"] = f"artifacts/datasets/{repo_id}.index.json"
+        updated["source"] = f"artifacts/datasets/raw/{repo_id}"
+        rewritten.append(updated)
+    config["repositories"] = rewritten
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(yaml.safe_dump(config, sort_keys=False), encoding="utf-8")
+    return output_path
 
 
 def main() -> int:
@@ -87,6 +125,16 @@ def main() -> int:
         help="Skip final evaluation stage",
     )
     parser.add_argument(
+        "--skip-gold-coverage",
+        action="store_true",
+        help="Skip gold coverage validation before final evaluation",
+    )
+    parser.add_argument(
+        "--final-eval-as-is",
+        action="store_true",
+        help="Use final config as-is without forcing raw index/source paths",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Print route commands without execution",
@@ -147,22 +195,54 @@ def main() -> int:
     else:
         print("[skip] auto-adapt")
 
-    if not args.skip_final_eval:
-        preferred_config = args.final_config or args.generated_config
-        preferred_config_path = root / preferred_config
-        if args.final_config:
-            final_config = args.final_config
-        elif preferred_config_path.exists():
-            final_config = args.generated_config
-        else:
-            final_config = "configs/experiment_pipeline.yaml"
+    preferred_config = args.final_config or args.generated_config
+    preferred_config_path = _resolve_path(root, preferred_config)
+    if args.final_config:
+        final_config = args.final_config
+    elif preferred_config_path.exists():
+        final_config = args.generated_config
+    else:
+        final_config = "configs/experiment_pipeline.yaml"
+    final_config_path = _resolve_path(root, final_config)
 
+    if not args.final_eval_as_is:
+        raw_eval_config_path = _resolve_path(
+            root, f"{args.output_dir}/generated_experiment_pipeline.final_raw.yaml"
+        )
+        final_eval_config_path = _build_raw_eval_config(
+            root=root,
+            source_config_path=final_config_path,
+            output_path=raw_eval_config_path,
+            dry_run=args.dry_run,
+        )
+        final_eval_config = str(final_eval_config_path.relative_to(root)).replace("\\", "/")
+    else:
+        final_eval_config = final_config
+
+    if not args.skip_final_eval:
+        if not args.skip_gold_coverage:
+            _run(
+                [
+                    "python3",
+                    "scripts/pipeline/check_gold_coverage.py",
+                    "--config",
+                    final_eval_config,
+                    "--output",
+                    f"{args.output_dir}/gold_coverage_summary.json",
+                ],
+                cwd=root,
+                dry_run=args.dry_run,
+            )
+        else:
+            print("[skip] gold-coverage")
+
+    if not args.skip_final_eval:
         _run(
             [
                 "python3",
                 "scripts/pipeline/run_final_evaluation.py",
                 "-c",
-                final_config,
+                final_eval_config,
                 "-o",
                 args.output_dir,
             ],
@@ -176,6 +256,7 @@ def main() -> int:
     print("ROUTE COMPLETE")
     print("=" * 80)
     print(f"summary: {output_dir}/final_summary.json")
+    print(f"gold-coverage: {output_dir}/gold_coverage_summary.json")
     print(f"adapt-summary: {output_dir}/auto_adapt_summary.json")
     print(f"search-aggregate: {output_dir}/aggregate_results.json")
     return 0

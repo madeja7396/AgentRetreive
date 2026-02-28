@@ -28,7 +28,8 @@ make experiment
 1. contract 検証（`validate_contracts.py`）
 2. テスト（`pytest -q`）
 3. corpus auto-adapt（clone/index/学習/探索）
-4. final evaluation（`final_summary.json` 生成）
+4. gold coverage 検証（taskset の gold file が index に存在することを検証）
+5. final evaluation（`final_summary.json` 生成）
 
 全サポート言語（18repo）で同じ導線を実行する場合:
 
@@ -56,6 +57,7 @@ python3 scripts/pipeline/run_corpus_auto_adapt.py
 4. index を再構築
 5. `symbol_language_weights.v1` を学習
 6. パラメータ探索 (`run_full_pipeline.py`) を実行
+7. 探索用 index（balanced）と公式評価用 index（raw）を分離して保存
 
 主要言語カバレッジ判定対象:
 - Rust / Go / C / C++ / C# / Python / JavaScript / TypeScript / Java
@@ -82,6 +84,10 @@ make auto-adapt-all
 - バランシングは `target_files=min(repo code files)` と `target_bytes=median(target_files * repo_mean_file_bytes)` を統計的に決定する
 - 各 repo は `target_files` を満たしつつ `target_bytes` への偏差が最小になるよう deterministic にサンプリングされる
 - 複雑性検証用 repo は `code_file_count / code_bytes / language_diversity / extension_diversity / language_entropy / path_depth_p90 / file_size_cv` の z-score 合算で自動選定し、`auto_adapt_summary.json` に記録する
+- index は用途別に分離される:
+  - 探索用: `artifacts/datasets/balanced_index/*.index.json`
+  - 公式評価用: `artifacts/datasets/*.index.json`（raw）
+- `run_experiment_route.py` は最終評価時に `generated_experiment_pipeline.final_raw.yaml` を生成し、raw index/source を強制使用する（`--final-eval-as-is` 指定時を除く）
 
 ### 2. テスト実行（fdリポジトリのみ）
 
@@ -147,8 +153,11 @@ parameter_search:  # パラメータ探索設定
 ```
 artifacts/experiments/pipeline/
 ├── {repo}_search_results.json     # パラメータ探索結果（全設定 + 最適設定）
-├── aggregate_results.json         # 集計結果（repo別最適値を含む）
-└── generated_experiment_pipeline.auto.yaml  # auto-adapt生成設定
+├── aggregate_results.json         # パラメータ探索集計（repo別最適値）
+├── gold_coverage_summary.json     # gold file coverage 検証結果
+├── final_summary.json             # 公式KPI（SSOT）
+├── generated_experiment_pipeline.auto.yaml  # auto-adapt生成設定
+└── generated_experiment_pipeline.final_raw.yaml  # 最終評価用raw固定config
 ```
 
 ## パラメータ探索の仕組み
@@ -260,6 +269,7 @@ EOF
 
 - **Overall Recall**: 74.3% (26/35タスク)
 - **最適パラメータ**: repoごとに異なるため `aggregate_results.json` を参照
+- **公式KPIのSSOT**: `final_summary.json` を参照（`aggregate_results.json` は探索用）
 - **重要知見**: `ProcessPoolExecutor` 非対応環境でもフォールバックにより探索は完走可能
 - **課題**: 大規模 repo（特に curl/cli）で探索時間が長く、軽量サブセット運用の設計が必要
 
