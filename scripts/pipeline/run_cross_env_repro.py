@@ -79,17 +79,53 @@ def main() -> int:
     parser.add_argument("--python-exec", default="python3.11")
     parser.add_argument("--taskset", default="docs/benchmarks/taskset.v2.full.jsonl")
     parser.add_argument(
+        "--constraints",
+        default="docs/benchmarks/run_constraints.v2.json",
+        help="Run constraints JSON (v2 preferred) for tolerance defaults",
+    )
+    parser.add_argument(
         "--final-config",
         default="artifacts/experiments/pipeline/generated_experiment_pipeline.final_raw.yaml",
     )
-    parser.add_argument("--abs-tol", type=float, default=0.01, help="absolute tolerance for recall/mrr")
-    parser.add_argument("--rel-latency-tol", type=float, default=0.10, help="relative tolerance for latency")
+    parser.add_argument(
+        "--abs-tol",
+        type=float,
+        default=None,
+        help="absolute tolerance for quality metrics (recall/mrr)",
+    )
+    parser.add_argument(
+        "--rel-latency-tol",
+        type=float,
+        default=None,
+        help="relative tolerance for latency metrics",
+    )
+    parser.add_argument(
+        "--output-suffix",
+        default="",
+        help="Optional suffix for output filename (e.g. tol30)",
+    )
     args = parser.parse_args()
 
     root = Path(__file__).resolve().parents[2]
     base_dir = root / "artifacts" / "experiments" / "runs" / args.run_id
     cross_dir = base_dir / "cross_env_py311"
     cross_dir.mkdir(parents=True, exist_ok=True)
+
+    constraints_path = (root / args.constraints).resolve()
+    constraints = {}
+    if constraints_path.exists():
+        constraints = _load_json(constraints_path)
+    repro = constraints.get("reproducibility", {})
+    abs_tol = (
+        float(args.abs_tol)
+        if args.abs_tol is not None
+        else float(repro.get("quality_abs_tolerance", 0.01))
+    )
+    rel_latency_tol = (
+        float(args.rel_latency_tol)
+        if args.rel_latency_tol is not None
+        else float(repro.get("latency_rel_tolerance", 0.10))
+    )
 
     py = args.python_exec
 
@@ -172,25 +208,25 @@ def main() -> int:
             }
         )
 
-    add_check("final.recall", float(base_final.get("recall", 0.0)), float(cand_final.get("recall", 0.0)), args.abs_tol, 0.0)
-    add_check("final.avg_mrr", float(base_final.get("avg_mrr", 0.0)), float(cand_final.get("avg_mrr", 0.0)), args.abs_tol, 0.0)
+    add_check("final.recall", float(base_final.get("recall", 0.0)), float(cand_final.get("recall", 0.0)), abs_tol, 0.0)
+    add_check("final.avg_mrr", float(base_final.get("avg_mrr", 0.0)), float(cand_final.get("avg_mrr", 0.0)), abs_tol, 0.0)
     add_check(
         "final.avg_latency_ms",
         float(base_final.get("avg_latency_ms", 0.0)),
         float(cand_final.get("avg_latency_ms", 0.0)),
         0.0,
-        args.rel_latency_tol,
+        rel_latency_tol,
     )
-    add_check("retrieval.recall", base_retrieval["recall"], cand_retrieval["recall"], args.abs_tol, 0.0)
-    add_check("retrieval.mrr", base_retrieval["mrr"], cand_retrieval["mrr"], args.abs_tol, 0.0)
-    add_check("comparison_ar.recall", base_comp["recall"], cand_comp["recall"], args.abs_tol, 0.0)
-    add_check("comparison_ar.mrr", base_comp["mrr"], cand_comp["mrr"], args.abs_tol, 0.0)
+    add_check("retrieval.recall", base_retrieval["recall"], cand_retrieval["recall"], abs_tol, 0.0)
+    add_check("retrieval.mrr", base_retrieval["mrr"], cand_retrieval["mrr"], abs_tol, 0.0)
+    add_check("comparison_ar.recall", base_comp["recall"], cand_comp["recall"], abs_tol, 0.0)
+    add_check("comparison_ar.mrr", base_comp["mrr"], cand_comp["mrr"], abs_tol, 0.0)
     add_check(
         "comparison_ar.latency_ms_mean",
         base_comp["latency_ms_mean"],
         cand_comp["latency_ms_mean"],
         0.0,
-        args.rel_latency_tol,
+        rel_latency_tol,
     )
 
     out = {
@@ -210,7 +246,10 @@ def main() -> int:
         "checks": checks,
         "all_passed": all(c["ok"] for c in checks),
     }
-    out_path = cross_dir / "cross_env_repro_report.json"
+    output_name = "cross_env_repro_report"
+    if args.output_suffix:
+        output_name += f".{args.output_suffix}"
+    out_path = cross_dir / f"{output_name}.json"
     out_path.write_text(json.dumps(out, indent=2), encoding="utf-8")
     print(out_path)
     print(f"all_passed={out['all_passed']}")

@@ -29,6 +29,7 @@
 - `docs/benchmarks/taskset.v2.full.jsonl` ← **最新タスクセット（35タスク）**
 - `docs/benchmarks/baselines.v1.json`
 - `docs/benchmarks/run_constraints.v1.json`
+- `docs/benchmarks/run_constraints.v2.json` ← **cross-env 許容誤差を明文化**
 
 ## Taskset Registry（分類）
 

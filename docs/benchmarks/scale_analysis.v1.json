@@ -1,0 +1,34 @@
+{
+  "version": "scale_analysis.v1",
+  "updated_at": "2026-03-01T14:45:00Z",
+  "baseline": {
+    "run_id": "run_20260301_144348_route",
+    "repositories": 7,
+    "total_docs": 2322,
+    "tasks": 35,
+    "metrics": {
+      "recall_at_1": 0.743,
+      "mrr": 0.381,
+      "avg_latency_ms": 0.75
+    }
+  },
+  "additional_repositories": [
+    {"name": "axios", "docs": 164, "terms": 2132, "size_mb": 2.5, "has_tasks": false},
+    {"name": "aspnetcore", "docs": 10417, "terms": 52784, "size_mb": 253.7, "has_tasks": false}
+  ],
+  "scale_factors": {
+    "small": {"max_docs": 100, "examples": ["fd", "fmt"]},
+    "medium": {"max_docs": 1000, "examples": ["curl", "cli"]},
+    "large": {"min_docs": 10000, "examples": ["aspnetcore"]}
+  },
+  "observations": [
+    "Baseline 7 repos represent small-to-medium scale (24-990 docs each)",
+    "aspnetcore is 42x larger than average baseline repo (14.4x total)",
+    "Index size scales sub-linearly with doc count (compression effect)"
+  ],
+  "future_work": [
+    "Add taskset entries for axios and aspnetcore for end-to-end evaluation",
+    "Measure index build time for large repos (aspnetcore took >5min)",
+    "Test search latency under 100MB+ index sizes"
+  ]
+}

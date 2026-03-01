@@ -18,11 +18,14 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 SCHEMAS = {
     "query": ROOT / "docs/schemas/query.dsl.v1.schema.json",
     "result": ROOT / "docs/schemas/result.minijson.v1.schema.json",
+    "result_v2": ROOT / "docs/schemas/result.minijson.v2.schema.json",
     "dataset_manifest": ROOT / "docs/schemas/dataset_manifest.v1.schema.json",
     "experiment_run_record": ROOT / "docs/schemas/experiment_run_record.v1.schema.json",
+    "experiment_run_record_v2": ROOT / "docs/schemas/experiment_run_record.v2.schema.json",
     "corpus": ROOT / "docs/schemas/corpus.v1.schema.json",
     "baselines": ROOT / "docs/schemas/baselines.v1.schema.json",
     "run_constraints": ROOT / "docs/schemas/run_constraints.v1.schema.json",
+    "run_constraints_v2": ROOT / "docs/schemas/run_constraints.v2.schema.json",
     "taskset_entry": ROOT / "docs/schemas/taskset.v1.entry.schema.json",
     "contract_policy": ROOT / "docs/schemas/contract_policy.v1.schema.json",
     "daemon_task": ROOT / "docs/schemas/daemon_task.v1.schema.json",
@@ -33,9 +36,11 @@ SCHEMAS = {
 SAMPLES = {
     "dataset_manifest": ROOT / "tasks/templates/dataset_manifest.json",
     "experiment_run_record": ROOT / "tasks/templates/experiment_run_record.json",
+    "experiment_run_record_v2": ROOT / "tasks/templates/experiment_run_record.v2.json",
     "corpus": ROOT / "docs/benchmarks/corpus.v1.json",
     "baselines": ROOT / "docs/benchmarks/baselines.v1.json",
     "run_constraints": ROOT / "docs/benchmarks/run_constraints.v1.json",
+    "run_constraints_v2": ROOT / "docs/benchmarks/run_constraints.v2.json",
     "contract_policy": ROOT / "docs/contracts/contract_policy.v1.json",
     "daemon_task": ROOT / "tasks/templates/daemon_task.v1.json",
 }

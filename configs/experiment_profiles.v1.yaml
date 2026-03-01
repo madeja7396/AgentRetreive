@@ -1,0 +1,23 @@
+version: "experiment_profiles.v1"
+
+profiles:
+  full:
+    description: "Full fidelity profile for official KPI updates"
+    output_dir: "artifacts/experiments/pipeline"
+    generated_config: "artifacts/experiments/pipeline/generated_experiment_pipeline.auto.yaml"
+    runs_root: "artifacts/experiments/runs"
+    registry_root: "artifacts/experiments"
+    grid_profile: "full"
+    no_balance: false
+
+  fast:
+    description: "High-velocity profile for short iteration cycles"
+    repos: "fd,ripgrep,fzf,fmt,curl,pytest,cli"
+    output_dir: "artifacts/experiments/fast/pipeline"
+    generated_config: "artifacts/experiments/fast/pipeline/generated_experiment_pipeline.auto.yaml"
+    runs_root: "artifacts/experiments/fast/runs"
+    registry_root: "artifacts/experiments/fast"
+    state_file: "artifacts/experiments/fast/state/auto_adapt_state.v1.json"
+    search_cache_dir: "artifacts/experiments/fast/cache/search"
+    grid_profile: "fast"
+    no_balance: true

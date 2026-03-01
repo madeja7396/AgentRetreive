@@ -37,6 +37,18 @@ make experiment
 make experiment-all
 ```
 
+高速反復（7repo / reduced grid / cache 利用）で回す場合:
+
+```bash
+make experiment-fast
+```
+
+日次のフル再実行（強制 refresh）を回す場合:
+
+```bash
+make experiment-daily-full
+```
+
 前処理チェックのみ行う場合:
 
 ```bash
@@ -79,6 +91,8 @@ make auto-adapt-all
 - `--repos` で指定した repo にタスクが未登録の場合、index は作成されるが重み学習は自動スキップされる
 - 全コーパスを強制処理する場合は `--index-all` を付与する
 - バランシングを無効化して生リポジトリを使う場合は `--no-balance` を付与する
+- `--grid-profile fast` で探索グリッドを縮小できる
+- `--state-file` と `--search-cache-dir` を使うと、index / symbol-fit / search を差分実行できる
 - 実行環境で `ProcessPoolExecutor` が使えない場合、探索は `ThreadPoolExecutor` へ自動フォールバックする
 - clone timeout は `AR_CLONE_TIMEOUT_SEC`（デフォルト 1800秒）で調整できる
 - バランシングは `target_files=min(repo code files)` と `target_bytes=median(target_files * repo_mean_file_bytes)` を統計的に決定する
@@ -158,6 +172,11 @@ artifacts/experiments/pipeline/
 ├── final_summary.json             # 公式KPI（SSOT）
 ├── generated_experiment_pipeline.auto.yaml  # auto-adapt生成設定
 └── generated_experiment_pipeline.final_raw.yaml  # 最終評価用raw固定config
+
+artifacts/experiments/fast/
+├── pipeline/                      # fast profile の評価出力
+├── cache/search/                  # run_full_pipeline の repo別探索キャッシュ
+└── state/auto_adapt_state.v1.json # auto-adapt の短絡実行状態
 ```
 
 ## パラメータ探索の仕組み
@@ -227,8 +246,13 @@ parameter_search:
 |--------|------|
 | `make pipeline` | フルパイプライン実行 |
 | `make test` | クイックテスト |
+| `make experiment-fast` | 高速反復プロファイル実行（7repo, reduced grid, cache） |
+| `make experiment-daily-full` | 日次フル実行（clone/index/symbol-fit 強制更新） |
 | `make validate` | 契約検証 |
 | `make phase3-complete RUN_ID=<run_id>` | Phase3 残タスク（micro/e2e/ablation/stability）を実測生成 |
+| `make run-record RUN_ID=<run_id>` | run_record v1/v2 と run_registry を更新 |
+| `make repro-cross-env RUN_ID=<run_id>` | Python 3.11 cross-env 再現検証 |
+| `make template-sync-check` | TEMPLATE 配布バンドルの同期チェック |
 | `make clean` | 出力削除 |
 | `make report` | レポート生成 |
 

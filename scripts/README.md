@@ -27,19 +27,44 @@
 - `scripts/benchmark/complete_phase3.py`
 - `scripts/benchmark/analyze_toolcall_reduction.py`
 - `scripts/pipeline/run_cross_env_repro.py`
+- `scripts/pipeline/generate_run_record.py`
 - `scripts/dev/run_cross_env_repro.sh`
+- `scripts/dev/sync_template_bundle.py`
 
-### Incubation（補助・分析）
+### Active（Pipeline サブコンポーネント）
 
-- `scripts/benchmark/compare_all_tools.py`
-- `scripts/benchmark/compare_baselines.py`
-- `scripts/benchmark/compare_with_optimal.py`
-- `scripts/benchmark/evaluate_taskset.py`
-- `scripts/benchmark/investigate_ripgrep.py`
-- `scripts/benchmark/parameter_search.py`
-- `scripts/benchmark/run_all_experiments.py`
-- `scripts/benchmark/run_comparison.py`
-- `scripts/benchmark/verify_dataset.py`
+これらは `make` / pipeline から間接的に呼び出される：
+
+- `scripts/benchmark/evaluate_taskset.py` - taskset 評価（EXP-003）
+- `scripts/benchmark/run_comparison.py` - baseline 比較（EXP-004）
+- `scripts/benchmark/verify_dataset.py` - dataset 検証
+- `scripts/pipeline/run_full_pipeline.py` - 従来パイプライン（段階的に route へ移行中）
+
+### Incubation（実験・分析・補助）
+
+利用実績あり、標準導線への統合検討中：
+
+- `scripts/benchmark/compare_all_tools.py` - 多ツール比較（段階的に run_comparison へ統合）
+- `scripts/benchmark/compare_baselines.py` - ベースライン比較分析
+- `scripts/benchmark/compare_with_optimal.py` - 最適値との差分分析
+- `scripts/benchmark/parameter_search.py` - パラメータグリッドサーチ
+- `scripts/benchmark/run_all_experiments.py` - 全実験一括実行
+
+利用実績なし／重複／代替あり：
+
+- `scripts/benchmark/investigate_ripgrep.py` - RIPGREP_INVESTIGATION_REPORT.md 作成時の調査スクリプト
+
+### Archive（非推奨・履歴保存）
+
+なし（現時点では incubation から直接削除せず、利用実績を見守る）
+
+## 昇格/廃止判断基準
+
+| 判断 | 基準 | 最終判断時期 |
+|------|------|-------------|
+| Active 昇格 | 標準導線（Makefile/pipeline）から呼び出しが定常化 | 2026-03-15 |
+| Archive 移行 | 2週間以上利用実績なし、かつ代替導線でカバー | 2026-03-15 |
+| 残留 Incubation | 実験・分析時に都度利用継続 | 継続 |
 
 ## 標準実行入口
 

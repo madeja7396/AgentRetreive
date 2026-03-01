@@ -1,0 +1,347 @@
+# AgentRetrieve 再設計レポート
+
+> **前提**: 現行プロジェクトのコード・設計文書・ベンチマーク結果をすべて精査した上で、「ゼロから自由に設計し直す」場合の提案をまとめる。
+
+---
+
+## 1. 現行設計の評価
+
+### 1.1 良い点（引き継ぐべき思想）
+
+| 思想 | 評価 |
+|------|------|
+| **Capability-based Retrieval**（LLMにパスを見せず [doc_id](file:///mnt/d/dev/AgentRetrieve/src/agentretrieve/cli.py#266-271)/[span_id](file:///mnt/d/dev/AgentRetrieve/src/agentretrieve/cli.py#273-278) で参照） | ◎ 独自性が高く論文の核 |
+| **構造化DSL入力**（`must`/`should`/`not`/[near](file:///mnt/d/dev/AgentRetrieve/src/agentretrieve/query/engine.py#461-479)/[symbol](file:///mnt/d/dev/AgentRetrieve/src/agentretrieve/query/engine.py#421-433)） | ◎ エージェント向けに正しい抽象 |
+| **ミニJSON固定スキーマ出力**（`budget` による厳密なバイト制御） | ◎ トークン効率の理論的基盤 |
+| **非埋め込み・決定性**（BM25整数スコア、再現可能） | ◎ 差別化軸として有効 |
+| **proof-carrying**（`digest` + `bounds`） | ○ 検証可能性が担保される |
+
+### 1.2 課題（再設計で解消すべき点）
+
+| 課題 | 影響度 | 詳細 |
+|------|--------|------|
+| **Pure Python による性能限界** | 🔴 高 | curl（大規模C）で ~15s。[inverted.py](file:///mnt/d/dev/AgentRetrieve/src/agentretrieve/index/inverted.py) 576行の手書きBM25はスケールしない |
+| **モノリシックなファイル構造** | 🟡 中 | [engine.py](file:///mnt/d/dev/AgentRetrieve/tests/unit/test_query_engine.py) 576行に検索ロジック全部。スコアリング・フィルタ・ページネーションが混在 |
+| **tree-sitter未使用の構文解析** | 🟡 中 | 正規表現 + AST fallback で symbol 抽出。Python以外の精度が低い |
+| **インデックスの永続化がJSON** | 🟡 中 | [save()](file:///mnt/d/dev/AgentRetrieve/src/agentretrieve/query/symbol_weights.py#61-67)/[load()](file:///mnt/d/dev/AgentRetrieve/src/agentretrieve/query/symbol_weights.py#54-60) が巨大JSON。差分更新の実態は「全再構築 + atomic replace」 |
+| **ベンチが"README grep"に偏る** | 🟡 中 | 25/35タスクがREADME/GUIDE内のアンカー検索。コード検索の評価が薄い |
+| **MCP/LSP統合なし** | 🟠 中 | CLI専用。エージェントフレームワークとの統合パスがない |
+| **外部依存ゼロの制約** | 🟡 中 | `dependencies = []` は美しいがtree-sitter等を排除する原因 |
+
+---
+
+## 2. 再設計アーキテクチャ
+
+### 2.1 全体像
+
+```mermaid
+graph TB
+    subgraph "Interface Layer"
+        CLI["CLI (ar)"]
+        MCP["MCP Server<br/>(JSON-RPC over stdio)"]
+        LSP["LSP Bridge<br/>(将来)"]
+    end
+
+    subgraph "Core Engine (Rust)"
+        QP["Query Planner"]
+        SC["Scorer<br/>(BM25 + Symbol + Near)"]
+        IX["Index Store<br/>(Memory-mapped)"]
+        TK["Tokenizer<br/>(Unicode-aware)"]
+        SY["Symbol Extractor<br/>(tree-sitter)"]
+    end
+
+    subgraph "Capability Layer"
+        CAP["Handle Manager<br/>(doc_id / span_id)"]
+        PROOF["Proof Generator<br/>(digest + bounds)"]
+        BUDGET["Budget Enforcer<br/>(bytes / results / hits)"]
+    end
+
+    subgraph "Output"
+        FMT["Formatter<br/>(mini-JSON v3)"]
+    end
+
+    CLI --> QP
+    MCP --> QP
+    LSP --> QP
+    QP --> SC
+    SC --> IX
+    IX --> TK
+    IX --> SY
+    SC --> CAP
+    CAP --> PROOF
+    SC --> BUDGET
+    BUDGET --> FMT
+```
+
+### 2.2 技術選定の変更
+
+| 領域 | 現行 | 再設計 | 理由 |
+|------|------|--------|------|
+| **言語** | Python 3.10 | **Rust** (コア) + **Python** (ベンチ/スクリプト) | インデックス構築・検索のレイテンシを100x改善。PyO3でPythonバインディング提供 |
+| **構文解析** | 正規表現 + `ast` | **tree-sitter** | 40+言語を統一的に扱える。関数/クラスの正確なspan抽出 |
+| **インデックス形式** | JSON | **mmap対応バイナリ** (FST + postings) | cold startゼロ。メモリ効率。差分更新可能 |
+| **インターフェース** | CLI only | **CLI + MCP Server + Library API** | エージェントフレームワーク(Claude, Gemini等)との直接統合 |
+| **テスト** | pytest 8テスト | **property-based testing** + 統合テスト + ベンチスイート | quickcheck/proptest で BM25 不変条件をファジング |
+
+### 2.3 モジュール構成
+
+```
+agent-retrieve/
+├── crates/
+│   ├── ar-core/              # コアエンジン (Rust)
+│   │   ├── src/
+│   │   │   ├── tokenizer.rs      # Unicode-aware, camel/snake分割
+│   │   │   ├── index/
+│   │   │   │   ├── builder.rs     # インデックス構築
+│   │   │   │   ├── store.rs       # mmap読み込み + クエリ
+│   │   │   │   ├── postings.rs    # 転置リスト
+│   │   │   │   └── fst.rs         # 有限状態トランスデューサ (term辞書)
+│   │   │   ├── scorer.rs          # BM25 + boost
+│   │   │   ├── query/
+│   │   │   │   ├── parser.rs      # DSL v2 パーサ
+│   │   │   │   ├── planner.rs     # クエリ最適化
+│   │   │   │   └── executor.rs    # 実行エンジン
+│   │   │   ├── symbol.rs          # tree-sitter統合
+│   │   │   ├── capability.rs      # handle発行 + proof
+│   │   │   └── budget.rs          # 出力制御
+│   │   └── Cargo.toml
+│   │
+│   ├── ar-cli/               # CLIフロントエンド (Rust)
+│   │   └── src/main.rs
+│   │
+│   └── ar-mcp/               # MCP Server (Rust)
+│       └── src/main.rs
+│
+├── python/
+│   ├── agentretrieve/         # PyO3バインディング
+│   │   ├── __init__.py
+│   │   └── _native.pyd        # Rustネイティブモジュール
+│   └── pyproject.toml
+│
+├── bench/                     # ベンチマークスイート
+│   ├── corpora/
+│   ├── tasks/
+│   └── evaluate.py
+│
+└── docs/
+    ├── schemas/               # JSON Schema (DSL v2, Result v3)
+    └── paper/
+```
+
+---
+
+## 3. 主要コンポーネントの再設計詳細
+
+### 3.1 インデックスエンジン（最大の改善点）
+
+**現行の問題**: [inverted.py](file:///mnt/d/dev/AgentRetrieve/src/agentretrieve/index/inverted.py) はPythonの `dict[str, IndexEntry]` にすべてを載せる。10万ファイル規模でGBオーダーのメモリ消費、cold startに数秒〜数十秒かかる。
+
+**再設計**:
+
+```
+┌─────────────────────────────────────────────┐
+│              Index File (mmap)              │
+├──────────┬──────────┬───────────────────────┤
+│ Header   │ FST      │ Postings              │
+│ (magic,  │ (term→   │ (doc_id, tf, lines[], │
+│  version,│  offset) │  regions[])           │
+│  N_docs) │          │                       │
+├──────────┴──────────┴───────────────────────┤
+│ Document Table (doc_id → path, lang, hash,  │
+│                  length, symbol_spans[])     │
+└─────────────────────────────────────────────┘
+```
+
+- **FST (Finite State Transducer)**: tantivy/fst crateでterm辞書を圧縮。10万term → 数MB
+- **Postings**: delta-encoded + varint。メモリ使用量を1/10に
+- **mmap**: OS pagecacheに任せることでcold start実質ゼロ
+- **差分更新**: WAL (Write-Ahead Log) でファイル変更を追記、定期的にcompaction
+
+### 3.2 クエリDSL v2
+
+現行DSLを拡張し、以下を追加:
+
+```json
+{
+  "v": "query.v2",
+  "must": ["handleRequest"],
+  "should": ["middleware", "cors"],
+  "not": ["test", "mock"],
+  "near": [{"terms": ["auth", "token"], "scope": "function"}],
+  "symbol": ["handleRequest"],
+  "lang": ["typescript"],
+  "path_prefix": ["src/"],
+
+  "// 新規フィールド": "",
+  "scope_type": "function",
+  "sort": "relevance",
+  "context_lines": 3,
+  "include_signature": true,
+  "graph": {
+    "callers_of": "handleRequest",
+    "depth": 1
+  }
+}
+```
+
+| 新規フィールド | 目的 |
+|---------------|------|
+| `scope_type` | 結果粒度（file / function / class / block） |
+| `context_lines` | ヒット前後のコンテキスト行数 |
+| `include_signature` | 関数シグネチャを結果に含める |
+| `graph.callers_of` | 呼び出し元の探索（tree-sitter + 静的解析） |
+
+### 3.3 出力スキーマ v3
+
+```json
+{
+  "v": "result.v3",
+  "ok": true,
+  "cap": {
+    "epoch": "a1b2c3d4",
+    "index_hash": "sha256:..."
+  },
+  "r": [
+    {
+      "id": "d42_s7",
+      "s": 847,
+      "sig": "async fn handle_request(req: Request) -> Response",
+      "h": [
+        {"ln": 142, "txt": "let token = req.header(\"Authorization\");", "sc": 920}
+      ],
+      "rng": [140, 155],
+      "proof": {
+        "digest": "sha256:abc...",
+        "bounds": [130, 180]
+      },
+      "next": ["d42_s8", "d17_s3"]
+    }
+  ],
+  "t": false,
+  "cur": null,
+  "lim": {"max_bytes": 4096, "emitted": 1823}
+}
+```
+
+**v1/v2からの変更点**:
+- [doc_id](file:///mnt/d/dev/AgentRetrieve/src/agentretrieve/cli.py#266-271) + [span_id](file:///mnt/d/dev/AgentRetrieve/src/agentretrieve/cli.py#273-278) → 統合 [id](file:///mnt/d/dev/AgentRetrieve/src/agentretrieve/cli.py#266-271)（さらにトークン削減）
+- [sig](file:///mnt/d/dev/AgentRetrieve/src/agentretrieve/query/symbol_weights.py#74-77) フィールド追加（関数シグネチャ）
+- `rng` をarray `[from, to]` に（キー名を省略）
+- `proof` 内に digest を一本化
+
+### 3.4 MCP Server 統合
+
+```
+Agent (LLM)
+  │
+  │ JSON-RPC over stdio
+  │
+  ▼
+┌──────────────────────┐
+│   ar-mcp server      │
+│                      │
+│  tools:              │
+│   - ar.search        │  ← DSL v2クエリ実行
+│   - ar.read_span     │  ← span_id指定で本文取得
+│   - ar.expand        │  ← 周辺コンテキスト拡張
+│   - ar.index_status  │  ← インデックス状態確認
+│   - ar.callers       │  ← 呼び出し元探索
+│                      │
+│  resources:          │
+│   - ar://index/stats │  ← インデックス統計
+│   - ar://schema/dsl  │  ← DSLスキーマ参照
+└──────────────────────┘
+```
+
+MCPにすることで、Claude / Gemini / 自作エージェントから **ツール呼び出し1回** でコード検索が完結する。
+
+### 3.5 Tokenizer の改善
+
+| 項目 | 現行 | 再設計 |
+|------|------|--------|
+| CJK | 非対応 | unigram分割 |
+| 数値リテラル | そのまま | 正規化 (`0xFF` → `hex_literal`) |
+| ストップワード | なし | 言語別ストップワード（`the`, `return`, `self`） |
+| ステミング | なし | 軽量suffix stripping（`Handler` → `handl`） |
+| n-gram | なし | bigram index（フレーズ検索高速化） |
+
+---
+
+## 4. ベンチマーク再設計
+
+### 4.1 現行の問題
+
+- 35タスク中、ほぼ全てがREADME/FAQ/GUIDEの**ドキュメント検索**。実コードの関数発見・呼び出し追跡がない
+- ベースラインがテキスト検索ツール（ripgrep, git grep）のみ。埋め込み系との定量比較がない
+
+### 4.2 再設計タスクセット（3層構造）
+
+| Layer | タスク数 | 内容 | 例 |
+|-------|---------|------|-----|
+| **L1: Keyword** | 15 | 既知文字列の発見 | エラーメッセージ、設定キー |
+| **L2: Symbol** | 15 | 関数/クラスの発見と関連コード | 「`parse_args` の定義と呼び出し元」 |
+| **L3: Compositional** | 10 | 複数条件の組合せ | 「`auth` と [token](file:///mnt/d/dev/AgentRetrieve/src/agentretrieve/index/tokenizer.py#74-102) が同一関数内にあるファイルで、テストを除外」 |
+
+### 4.3 評価指標の拡充
+
+| 指標 | 現行 | 追加 |
+|------|------|------|
+| Recall@K, MRR@K | ✅ | - |
+| nDCG@K | ❌ | ✅ 追加（段階的関連度） |
+| Token Cost | ❌ | ✅ 追加（出力バイト / 入力トークン） |
+| Tool Calls / Task | ❌ | ✅ 追加（タスク完了までの呼び出し回数） |
+| Time-to-First-Relevant | ❌ | ✅ 追加（最初の正解到達時間） |
+
+---
+
+## 5. 開発ロードマップ
+
+```mermaid
+gantt
+    title AgentRetrieve v2 開発ロードマップ
+    dateFormat YYYY-MM-DD
+    axisFormat %m月
+
+    section Phase 1: Core Engine
+    Rust workspace setup           :p1a, 2026-03-15, 3d
+    Tokenizer + FST index          :p1b, after p1a, 10d
+    BM25 scorer + postings         :p1c, after p1b, 7d
+    tree-sitter symbol extraction  :p1d, after p1c, 7d
+    CLI (ar ix build / ar q)       :p1e, after p1d, 5d
+
+    section Phase 2: Capability & Output
+    Handle manager + proof         :p2a, after p1e, 5d
+    Budget enforcer                :p2b, after p2a, 3d
+    Output formatter v3            :p2c, after p2b, 5d
+    PyO3 bindings                  :p2d, after p2c, 5d
+
+    section Phase 3: Integration
+    MCP Server実装                  :p3a, after p2d, 7d
+    ベンチマークスイート刷新          :p3b, after p2d, 10d
+    論文用実験実行                   :p3c, after p3a, 7d
+
+    section Phase 4: Polish
+    差分更新 (WAL/compaction)       :p4a, after p3c, 7d
+    パフォーマンスチューニング        :p4b, after p4a, 5d
+    ドキュメント + 論文執筆           :p4c, after p4b, 14d
+```
+
+---
+
+## 6. まとめ：何が変わるか
+
+| 観点 | 現行 (v1) | 再設計 (v2) | 改善比 |
+|------|-----------|-------------|--------|
+| **インデックス構築** | Python dict → JSON | Rust FST + mmap | ~50-100x高速 |
+| **クエリレイテンシ** | p95 ~200ms (小規模) | p95 <5ms (目標) | ~40x |
+| **大規模リポ対応** | curl ~15s | <500ms (目標) | ~30x |
+| **Symbol精度** | regex (Python特化) | tree-sitter (40+言語) | 大幅改善 |
+| **エージェント統合** | CLI → stdout → パース | MCP tool call 1回 | ステップ数削減 |
+| **出力トークン効率** | ~80%削減 (vs ripgrep) | ~90%削減 (目標) | +10pp |
+| **コード行数** | ~2,000 (Python) | ~5,000 (Rust) + ~500 (Python) | 複雑度は増すが品質向上 |
+
+### 核心のメッセージ
+
+> **現行AgentRetrieveの"思想"（Capability-based Retrieval + DSL + Budget）はそのまま正しい。**
+> 再設計で変えるべきは**実装基盤**（Python → Rust）と**構文理解**（regex → tree-sitter）と**統合インターフェース**（CLI → MCP）の3点。
+> これにより、思想の正しさを**実用的な性能**で証明できるようになる。

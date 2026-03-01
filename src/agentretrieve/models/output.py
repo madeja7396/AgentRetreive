@@ -20,6 +20,7 @@ class MiniJsonResult:
     r: list[ResultEntry] = field(default_factory=list)  # results
     t: bool = False  # truncated
     cur: str | None = None  # cursor
+    cap: CapabilityMeta | None = None
     lim: Limits = field(default_factory=lambda: Limits(
         max_bytes=8192, max_results=20, max_hits=10, max_excerpt=256, emitted_bytes=0
     ))
@@ -42,7 +43,7 @@ class MiniJsonResult:
                 for h in entry.h
             ]
             
-            results.append({
+            item = {
                 "pi": path_index[entry.p],
                 "s": entry.s,
                 "h": hit_dicts,
@@ -58,7 +59,10 @@ class MiniJsonResult:
                     "start": entry.bounds.start,
                     "end": entry.bounds.end,
                 },
-            })
+            }
+            if entry.cap_epoch is not None:
+                item["cap_epoch"] = entry.cap_epoch
+            results.append(item)
 
         paths = [p for p, _ in sorted(path_index.items(), key=lambda x: x[1])]
         payload = {
@@ -76,6 +80,10 @@ class MiniJsonResult:
                 "emitted_bytes": 0,
             },
         }
+        if self.cap is not None:
+            payload["cap"] = {
+                "index_fingerprint": self.cap.index_fingerprint,
+            }
         emitted_bytes = len(json.dumps(payload, ensure_ascii=False).encode("utf-8"))
         payload["lim"]["emitted_bytes"] = emitted_bytes
         return payload
@@ -98,6 +106,14 @@ class ResultEntry:
     span_id: str  # capability handle
     digest: str  # content hash
     bounds: BoundsEntry  # line bounds
+    cap_epoch: str | None = None
+
+
+@dataclass
+class CapabilityMeta:
+    """Top-level capability metadata for v2 output."""
+
+    index_fingerprint: str
 
 
 @dataclass
@@ -140,6 +156,8 @@ def format_results(
     budget_max_excerpt: int = 256,
     cursor: str | None = None,
     pagination_truncated: bool = False,
+    result_version: str = "v1",
+    capability_epoch: str | None = None,
 ) -> MiniJsonResult:
     """Format search results to mini-JSON contract.
     
@@ -153,6 +171,9 @@ def format_results(
     Returns:
         MiniJsonResult conforming to schema
     """
+    if result_version not in {"v1", "v2"}:
+        raise ValueError(f"Unsupported result_version: {result_version}")
+
     truncated = pagination_truncated or len(results) > budget_max_results
 
     # Build candidate entries up to max_results/max_hits.
@@ -182,9 +203,14 @@ def format_results(
             rng=RangeEntry(from_line=sr.rng.from_line, to_line=sr.rng.to_line),
             next=sr.next_spans,
             doc_id=sr.doc_id_str,
-            span_id=sr.span_id,
+            span_id=(
+                f"{sr.span_id}_{capability_epoch[:8]}"
+                if result_version == "v2" and capability_epoch is not None
+                else sr.span_id
+            ),
             digest=sr.digest,
             bounds=BoundsEntry(start=sr.bounds.start, end=sr.bounds.end),
+            cap_epoch=capability_epoch if result_version == "v2" else None,
         )
         entries.append(entry)
 
@@ -199,7 +225,16 @@ def format_results(
     # Enforce max_bytes strictly by admitting entries while output stays in budget.
     accepted: list[ResultEntry] = []
     for entry in entries:
-        probe = MiniJsonResult(ok=True, r=accepted + [entry], t=False, lim=limits).to_dict()
+        probe = MiniJsonResult(
+            v=f"result.{result_version}",
+            ok=True,
+            r=accepted + [entry],
+            t=False,
+            cap=CapabilityMeta(index_fingerprint=capability_epoch)
+            if result_version == "v2" and capability_epoch is not None
+            else None,
+            lim=limits,
+        ).to_dict()
         if probe["lim"]["emitted_bytes"] <= budget_max_bytes:
             accepted.append(entry)
             continue
@@ -210,9 +245,13 @@ def format_results(
         truncated = True
 
     return MiniJsonResult(
+        v=f"result.{result_version}",
         ok=True,
         r=accepted,
         t=truncated,
         cur=cursor,
+        cap=CapabilityMeta(index_fingerprint=capability_epoch)
+        if result_version == "v2" and capability_epoch is not None
+        else None,
         lim=limits,
     )

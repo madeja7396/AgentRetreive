@@ -572,6 +572,11 @@ def main() -> int:
         help="Final evaluation config path",
     )
     parser.add_argument("--repeats", type=int, default=5, help="Number of repeats for stability")
+    parser.add_argument(
+        "--skip-run-record",
+        action="store_true",
+        help="Skip run_record regeneration after Phase 3 artifact generation",
+    )
     args = parser.parse_args()
 
     root = Path(__file__).resolve().parents[2]
@@ -605,9 +610,21 @@ def main() -> int:
     print(f"generated: {run_dir / 'e2e_metrics.json'}")
     print(f"generated: {run_dir / 'ablation.json'}")
     print(f"generated: {run_dir / 'stability.json'}")
+
+    if not args.skip_run_record:
+        print("[phase3] refresh run_record")
+        subprocess.run(
+            [
+                "python3",
+                "scripts/pipeline/generate_run_record.py",
+                "--run-id",
+                args.run_id,
+            ],
+            cwd=str(root),
+            check=True,
+        )
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-    build_timeout_sec = int(os.getenv("AR_MICRO_BUILD_TIMEOUT_SEC", "45"))

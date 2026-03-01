@@ -39,13 +39,20 @@
 | `scripts/benchmark/complete_phase3.py` | active | Phase3残タスク（micro/e2e/ablation/stability）の実測生成 | `Makefile phase3-complete` |
 | `scripts/benchmark/analyze_toolcall_reduction.py` | active | tool-call削減率の定量証明 | `tasks/todo.md` |
 | `scripts/pipeline/run_cross_env_repro.py` | active | cross-env再現検証（Python 3.11） | `scripts/dev/run_cross_env_repro.sh` |
+| `scripts/pipeline/generate_run_record.py` | active | run_record v1/v2 と run_registry の自動生成 | `Makefile run-record` |
 | `scripts/dev/run_cross_env_repro.sh` | active | cross-env再現の1コマンド実行入口 | `docs/papers/ARTIFACT_APPENDIX.md` |
+| `scripts/dev/sync_template_bundle.py` | active | TEMPLATE 配布バンドルの同期チェック/同期実行 | `Makefile template-sync-check` |
+| `scripts/papers/generate_figure_assets.py` | active | 論文図表資産の一括生成 | `Makefile figures`, `FIGURE_SOURCES.v1.json` |
+| `scripts/pipeline/run_full_pipeline.py` | incubation | 従来パイプライン（route版へ移行中） | `scripts/README.md` |
+| `scripts/benchmark/evaluate_taskset.py` | active | taskset 評価（EXP-003、pipeline サブコンポーネント） | `scripts/README.md` |
+| `scripts/benchmark/run_comparison.py` | active | baseline 比較（EXP-004、pipeline サブコンポーネント） | `scripts/README.md` |
+| `scripts/benchmark/verify_dataset.py` | active | dataset 検証（pipeline サブコンポーネント） | `scripts/README.md` |
 | `scripts/benchmark/compare_all_tools.py` | incubation | 比較実験の補助スクリプト | `scripts/README.md` |
 | `scripts/benchmark/compare_baselines.py` | incubation | 比較実験の補助スクリプト | `scripts/README.md` |
 | `scripts/benchmark/compare_with_optimal.py` | incubation | 比較実験の補助スクリプト | `scripts/README.md` |
 | `scripts/benchmark/evaluate_taskset.py` | incubation | 単体評価補助 | `scripts/README.md` |
-| `scripts/benchmark/investigate_ripgrep.py` | incubation | 事象調査補助 | `scripts/README.md` |
 | `scripts/benchmark/parameter_search.py` | incubation | 旧探索導線（pipeline版へ統合済み） | `scripts/README.md` |
+| `scripts/benchmark/investigate_ripgrep.py` | archive | ripgrep調査ログ（RIPGREP_INVESTIGATION_REPORT.md作成時利用） | `scripts/README.md` |
 | `scripts/benchmark/run_all_experiments.py` | incubation | 旧実行導線（route版へ統合済み） | `scripts/README.md` |
 | `scripts/benchmark/run_comparison.py` | incubation | 比較実験補助 | `scripts/README.md` |
 | `scripts/benchmark/verify_dataset.py` | incubation | データ検証補助 | `scripts/README.md` |

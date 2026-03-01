@@ -10,10 +10,10 @@
     "rust": -0.6576655446911599
   },
   "metadata": {
-    "generated_at": "2026-02-28T15:45:22.871745+00:00",
+    "generated_at": "2026-03-01T14:56:36.452605+00:00",
     "method": "logistic_regression_with_language_interaction",
     "taskset": "/mnt/d/dev/AgentRetrieve/docs/benchmarks/taskset.v2.full.jsonl",
-    "config": "/mnt/d/dev/AgentRetrieve/artifacts/experiments/pipeline/generated_experiment_pipeline.auto.yaml",
+    "config": "/mnt/d/dev/AgentRetrieve/artifacts/experiments/fast/pipeline/generated_experiment_pipeline.auto.yaml",
     "max_results_per_task": 50,
     "sample_count": 406,
     "positive_sample_count": 14,

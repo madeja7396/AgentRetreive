@@ -1,0 +1,172 @@
+{
+  "version": "symbol_extraction_support.v1",
+  "description": "Language-specific symbol extraction support levels and fallback behavior",
+  "extraction_modes": {
+    "ast_strict": {
+      "description": "Full AST parsing with precise symbol boundary detection",
+      "reliability": "high"
+    },
+    "ast_heuristic": {
+      "description": "AST-based extraction with fallback for syntax errors",
+      "reliability": "medium"
+    },
+    "regex": {
+      "description": "Pattern-based extraction for declaration-like constructs",
+      "reliability": "medium"
+    },
+    "fallback": {
+      "description": "Block-level fallback when no symbol detection possible",
+      "reliability": "low"
+    }
+  },
+  "languages": {
+    "python": {
+      "mode": "ast_heuristic",
+      "extensions": [".py", ".pyi"],
+      "symbol_types": ["function", "class", "method", "async_function"],
+      "fallback_to_block": true,
+      "notes": "Uses ast.parse with end_lineno for Python 3.8+"
+    },
+    "rust": {
+      "mode": "regex",
+      "extensions": [".rs"],
+      "symbol_types": ["fn", "struct", "enum", "impl", "trait"],
+      "fallback_to_block": true,
+      "notes": "Brace-delimited block structure with regex fallback"
+    },
+    "go": {
+      "mode": "regex",
+      "extensions": [".go"],
+      "symbol_types": ["func", "type", "interface"],
+      "fallback_to_block": true,
+      "notes": "Brace-delimited block structure"
+    },
+    "c": {
+      "mode": "regex",
+      "extensions": [".c", ".h"],
+      "symbol_types": ["function", "struct", "enum", "typedef"],
+      "fallback_to_block": true,
+      "notes": "Brace-delimited with declaration pattern matching"
+    },
+    "cpp": {
+      "mode": "regex",
+      "extensions": [".cpp", ".cc", ".cxx", ".hpp"],
+      "symbol_types": ["function", "class", "struct", "namespace", "template"],
+      "fallback_to_block": true,
+      "notes": "Brace-delimited with declaration pattern matching"
+    },
+    "javascript": {
+      "mode": "regex",
+      "extensions": [".js", ".jsx", ".mjs", ".cjs"],
+      "symbol_types": ["function", "class", "method"],
+      "fallback_to_block": true,
+      "notes": "Brace-delimited block structure"
+    },
+    "typescript": {
+      "mode": "regex",
+      "extensions": [".ts", ".tsx", ".mts", ".cts"],
+      "symbol_types": ["function", "class", "interface", "type", "method"],
+      "fallback_to_block": true,
+      "notes": "Brace-delimited block structure"
+    },
+    "java": {
+      "mode": "regex",
+      "extensions": [".java"],
+      "symbol_types": ["class", "interface", "enum", "method"],
+      "fallback_to_block": true,
+      "notes": "Brace-delimited block structure"
+    },
+    "ruby": {
+      "mode": "regex",
+      "extensions": [".rb"],
+      "symbol_types": ["def", "class", "module"],
+      "fallback_to_block": true,
+      "notes": "Keyword-based with end-delimited blocks"
+    },
+    "php": {
+      "mode": "regex",
+      "extensions": [".php"],
+      "symbol_types": ["function", "class", "interface", "trait"],
+      "fallback_to_block": true,
+      "notes": "Brace-delimited block structure"
+    },
+    "csharp": {
+      "mode": "regex",
+      "extensions": [".cs"],
+      "symbol_types": ["class", "struct", "interface", "method", "property"],
+      "fallback_to_block": true,
+      "notes": "Brace-delimited block structure"
+    },
+    "kotlin": {
+      "mode": "regex",
+      "extensions": [".kt", ".kts"],
+      "symbol_types": ["fun", "class", "interface", "object"],
+      "fallback_to_block": true,
+      "notes": "Brace-delimited block structure"
+    },
+    "swift": {
+      "mode": "regex",
+      "extensions": [".swift"],
+      "symbol_types": ["func", "class", "struct", "enum", "protocol"],
+      "fallback_to_block": true,
+      "notes": "Brace-delimited block structure"
+    },
+    "dart": {
+      "mode": "regex",
+      "extensions": [".dart"],
+      "symbol_types": ["function", "class", "enum", "extension"],
+      "fallback_to_block": true,
+      "notes": "Brace-delimited block structure"
+    },
+    "haskell": {
+      "mode": "regex",
+      "extensions": [".hs", ".lhs"],
+      "symbol_types": ["function", "type", "class", "instance"],
+      "fallback_to_block": true,
+      "notes": "Layout-based with pattern matching for declarations"
+    },
+    "elixir": {
+      "mode": "regex",
+      "extensions": [".ex", ".exs"],
+      "symbol_types": ["def", "defp", "defmodule", "defmacro"],
+      "fallback_to_block": true,
+      "notes": "do-end block structure with keyword matching"
+    },
+    "markdown": {
+      "mode": "fallback",
+      "extensions": [".md", ".markdown"],
+      "symbol_types": [],
+      "fallback_to_block": true,
+      "notes": "No symbol extraction, paragraph-level blocks only"
+    },
+    "json": {
+      "mode": "fallback",
+      "extensions": [".json"],
+      "symbol_types": [],
+      "fallback_to_block": true,
+      "notes": "No symbol extraction"
+    },
+    "yaml": {
+      "mode": "fallback",
+      "extensions": [".yaml", ".yml"],
+      "symbol_types": [],
+      "fallback_to_block": true,
+      "notes": "No symbol extraction"
+    }
+  },
+  "thresholds": {
+    "coverage_warning": 0.5,
+    "coverage_critical": 0.2,
+    "fallback_rate_warning": 0.3,
+    "fallback_rate_critical": 0.5
+  },
+  "monitoring": {
+    "enabled": true,
+    "metrics": [
+      "files_by_language",
+      "symbol_regions_by_language",
+      "block_regions_by_language",
+      "fallback_rate_by_language"
+    ]
+  }
+}

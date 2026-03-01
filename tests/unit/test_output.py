@@ -64,6 +64,20 @@ class TestOutputFormatter(unittest.TestCase):
         self.assertEqual(payload["cur"], "cur_2_deadbeef")
         self.assertTrue(payload["t"])
 
+    def test_v2_includes_capability_metadata(self):
+        results = [self._mk_result(0, "src/a.py", "line1")]
+        payload = format_results(
+            results=results,
+            result_version="v2",
+            capability_epoch="a" * 20,
+        ).to_dict()
+
+        self.assertEqual(payload["v"], "result.v2")
+        self.assertIn("cap", payload)
+        self.assertEqual(payload["cap"]["index_fingerprint"], "a" * 20)
+        self.assertEqual(payload["r"][0]["cap_epoch"], "a" * 20)
+        self.assertTrue(payload["r"][0]["span_id"].endswith("_aaaaaaaa"))
+
 
 if __name__ == "__main__":
     unittest.main()

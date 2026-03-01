@@ -1,0 +1,37 @@
+{
+  "version": "results.latest",
+  "updated_at": "2026-03-01T14:43:48Z",
+  "run_id": "run_20260301_144348_route",
+  "profile": "full",
+  "repositories": 7,
+  "tasks": 35,
+  "metrics": {
+    "recall_at_1": {
+      "value": 0.742857,
+      "found": 26,
+      "total": 35,
+      "display": "74.3%"
+    },
+    "mrr": {
+      "value": 0.380748,
+      "display": "0.381"
+    },
+    "avg_latency_ms": {
+      "value": 0.75,
+      "display": "0.75ms"
+    }
+  },
+  "by_difficulty": {
+    "easy": {"recall": 0.929, "found": 13, "total": 14},
+    "medium": {"recall": 0.643, "found": 9, "total": 14},
+    "hard": {"recall": 0.571, "found": 4, "total": 7}
+  },
+  "by_task_type": {
+    "symbol_definition": {"recall": 0.929, "found": 13, "total": 14},
+    "configuration": {"recall": 0.714, "found": 5, "total": 7},
+    "error_handling": {"recall": 0.571, "found": 4, "total": 7},
+    "usage_search": {"recall": 0.571, "found": 4, "total": 7}
+  },
+  "status": "baseline_candidate",
+  "note": "Sprint 8/9実測値。Baseline v1.1として確定予定。"
+}

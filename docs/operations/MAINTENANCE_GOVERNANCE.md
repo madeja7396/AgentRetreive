@@ -54,6 +54,7 @@
 - `artifacts/datasets/raw/` 生データ上書き
 - 仕様更新なしでの実装先行変更
 - 任意シェル実行の運用常態化（固定導線を破る行為）
+- `TEMPLATE/` 配布バンドルのドリフトを放置する
 
 ## KPI管理ルール
 
@@ -72,6 +73,7 @@
 - `make validate` が通るか
 - `make experiment-ready` が通るか
 - `make report` が通るか
+- `make template-sync-check` が通るか
 - `tasks/todo.md` の未完了項目に owner/期限があるか
 - `tasks/lessons.md` が最新インシデントを反映しているか
 - `skills/CATALOG.yaml` の `owner` が `owners` 定義IDに一致しているか

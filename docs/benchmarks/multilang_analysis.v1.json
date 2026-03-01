@@ -1,0 +1,42 @@
+{
+  "version": "multilang_analysis.v1",
+  "updated_at": "2026-03-01T14:58:00Z",
+  "repositories": 11,
+  "total_docs": 15374,
+  "by_language": {
+    "C#": {"repos": 1, "docs": 10417, "avg_docs": 10417, "examples": ["aspnetcore"]},
+    "Haskell": {"repos": 1, "docs": 1927, "avg_docs": 1927, "examples": ["cabal"]},
+    "Python": {"repos": 2, "docs": 1047, "avg_docs": 523, "examples": ["pytest", "cli"]},
+    "C": {"repos": 1, "docs": 990, "avg_docs": 990, "examples": ["curl"]},
+    "Elixir": {"repos": 1, "docs": 544, "avg_docs": 544, "examples": ["elixir"]},
+    "JavaScript": {"repos": 1, "docs": 164, "avg_docs": 164, "examples": ["axios"]},
+    "Rust": {"repos": 2, "docs": 125, "avg_docs": 62, "examples": ["fd", "ripgrep"]},
+    "Go": {"repos": 1, "docs": 85, "avg_docs": 85, "examples": ["fzf"]},
+    "C++": {"repos": 1, "docs": 75, "avg_docs": 75, "examples": ["fmt"]}
+  },
+  "baseline_v1_1": {
+    "repos": 7,
+    "languages": ["Rust", "Go", "C", "C++", "Python"],
+    "recall_at_1": 0.743,
+    "mrr": 0.381
+  },
+  "additional_repos": {
+    "JavaScript": ["axios"],
+    "Haskell": ["cabal"],
+    "Elixir": ["elixir"],
+    "C#": ["aspnetcore"]
+  },
+  "observations": [
+    "Baseline v1.1 covers 5 languages (Rust, Go, C, C++, Python)",
+    "4 additional languages available: JavaScript, Haskell, Elixir, C#",
+    "Haskell (cabal) is medium-scale (1,927 docs), comparable to curl",
+    "Elixir is small-medium scale (544 docs)",
+    "C# (aspnetcore) is large-scale (10,417 docs), 42x average baseline"
+  ],
+  "future_work": [
+    "Add taskset entries for JavaScript, Haskell, Elixir, C# repos",
+    "Evaluate symbol extraction quality across functional languages (Haskell, Elixir)",
+    "Test search recall on dynamically-typed languages (JavaScript, Python)",
+    "Assess large-scale repo performance (aspnetcore: 10k+ docs)"
+  ]
+}

@@ -69,7 +69,7 @@ def evaluate_repository(repo_id: str, index_path: Path, tasks: list, config: Opt
         results.append({
             'task_id': task['id'],
             'difficulty': difficulty,
-            'task_type': task_type,  # noqa: F841
+            'task_type': task_type,
             'found': rank is not None,
             'rank': rank,
             'latency_ms': elapsed,
@@ -96,17 +96,17 @@ def evaluate_repository(repo_id: str, index_path: Path, tasks: list, config: Opt
                 'mrr': d_mrr
             }
     
-    # By task type
+    # By task type (dynamic, based on taskset content)
     type_metrics = {}
-    for tt in ['symbol_definition', 'symbol_usage', 'pattern_search', 'cross_reference']:
+    type_names = sorted({r['task_type'] for r in results})
+    for tt in type_names:
         tt_tasks = [r for r in results if r['task_type'] == tt]
-        if tt_tasks:
-            t_found = sum(1 for r in tt_tasks if r['found'])
-            type_metrics[tt] = {
-                'count': len(tt_tasks),
-                'found': t_found,
-                'recall': t_found / len(tt_tasks),
-            }
+        t_found = sum(1 for r in tt_tasks if r['found'])
+        type_metrics[tt] = {
+            'count': len(tt_tasks),
+            'found': t_found,
+            'recall': t_found / len(tt_tasks),
+        }
     
     return {
         'repo': repo_id,

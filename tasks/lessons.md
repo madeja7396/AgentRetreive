@@ -413,6 +413,26 @@
 
 ---
 
+### 2026-03-01: v2 契約導入は「v1互換 + dual-write + 機械検証」を同時に入れる
+
+**観測事実**:
+- v2 schema だけを追加しても、生成導線（run_record）と検証導線（CI/validator）が追従しないと実運用で使えない
+- capability の鮮度判定は、`span_id` 単体より `digest`/`epoch` を併用した機械検証の方が事故率が低い
+- TEMPLATE バンドルは手動同期だと高確率でドリフトする
+
+**教訓**:
+1. 破壊的移行を避けるには v1/v2 の dual-write を先に整備するべき
+2. v2 導入時は schema 追加だけでなく、生成スクリプト・CI・runbook まで同一ターンで接続するべき
+3. テンプレート配布運用は `--check` を持つ同期スクリプトを必須化するべき
+
+**対応**:
+- `result.minijson.v2` / `experiment_run_record.v2` / `run_constraints.v2` を追加
+- `generate_run_record.py` で run_record v1/v2 と registry v1/v2 を自動更新
+- `ar cap verify` と `result.v2` の `cap_epoch/index_fingerprint` で Invalid/Valid 判定を機械化
+- `sync_template_bundle.py` と `make template-sync-check` を追加
+
+---
+
 ## 全般的な原則
 
 1. **「シンプルさ」はパフォーマンスの敵ではない**:
@@ -426,6 +446,156 @@
 3. **「評価」の重要性**:
    - 主観的な「良さ」ではなく、タスクセットによる客観評価が必須
    - 難易度別・タイプ別の分解が真の課題を浮き彫りにする
+
+---
+
+### 2026-03-01: 資産分類判断基準（active/incubation/archive）
+
+**観測事実**:
+- スクリプトが増えると「どれを使うべきか」が新人に伝わらず、古い導線を使って事故る
+- 一度作った調査スクリプトが「念のため」で残り続け、台帳と実態が乖離する
+- archive へ移す判断を先延ばしにすると、incubation が肥大化して分類の意味が薄れる
+
+**教訓**:
+1. 分類は「使う頻度」でなく「標準導線に組み込まれているか」で決めるべき
+2. 昇格判断には期限を設け、それまでに定常化しなければ廃止候補にすべき
+3. archive 移行は「削除」ではなく「履歴保存」として、再利用価値のないものだけ段階的に移すべき
+
+**対応**:
+- `scripts/README.md` に「昇格/廃止判断基準」と「最終判断時期」を明記
+- `investigate_ripgrep.py` は調査完了のため archive へ移行
+- `compare_baselines/compare_with_optimal` は利用実績ありのため incubation 残留、昇格判断を 2026-03-15 に設定
+
+---
+
+### 2026-03-01: 完了判定は「strict gate 実測PASS」前に宣言しない
+
+**観測事実**:
+- 23章で「完了レビュー」が記載されていた一方、`validate_figure_integrity.py --strict` は `1 error, 3 warnings` で失敗していた
+- `make release-ready` も `RUN_ID` 必須と `cross_env_reproducibility` generator 未実装により完走しなかった
+- チェックボックス未完了状態と完了レビューが併存し、完了判定の信頼性が下がった
+
+**教訓**:
+1. 完了レビューは必須 gate（strict integrity / release-ready）を実行し、PASSログ確認後にのみ記載するべき
+2. 「通常モードPASS（warningsあり）」と「strictモードPASS（warningsなし）」を混同してはいけない
+3. チェックボックス状態とレビュー文は同一ターンで整合確認し、矛盾を残さない
+
+**対応**:
+- `tasks/todo.md` に 23.8 検証追補を追加し、23章を `Reopen` 判定へ修正
+- 次スプリント（24章）を strict 緑化と release-ready 完走に限定して再計画
+- 今後は完了宣言前に `python3 scripts/ci/validate_figure_integrity.py --strict` と `make release-ready` を必須実行する
+
+---
+
+### 2026-03-01: 完了判定前に strict gate を実行する
+
+**観測事実**:
+- Sprint 完了申告後に `validate_figure_integrity.py --strict` を実行すると、未生成ファイルで warning が残っていた
+- `{run_id}` placeholder を持つ input_artifacts が解決されないまま、完了と誤認していた
+- 手編集をしていた箇所が残っていると、再生成時に上書き衝突が起きうる
+
+**教訓**:
+1. 完了判定は「非 strict 通過」ではなく「strict 通過（警告0）」を基準にすべき
+2. placeholder を持つ設定ファイルは、実際のファイル生成で解決可能性を確認してから完了とすべき
+3. 図表生成は「ソース定義 → 生成スクリプト → strict 検証」を同一ターンで完走すべき
+
+**対応**:
+- Sprint 4 を設け、strict 緑化を完了条件に追加
+- `FIGURE_SOURCES.v1.json` の input_artifacts を実パスへ更新（`{run_id}` は生成時に解決）
+- `make release-ready` に既定 RUN_ID を組み込み、1コマンドで strict 完走を可能にした
+- 完了レビューに「strict gate 通過」の実測ログを必須化
+
+---
+
+### 2026-03-01: TEMPLATE 初期化は「機械的コピー」ではなく「検証可能な導線」にする
+
+**観測事実**:
+- 手動で `TEMPLATE/` をコピーすると、必要ファイルの取りこぼしや配置ミスが発生する
+- コピー後に契約検証が失敗すると、どのファイルが不足しているか診断が困難
+- 初期化直後の品質ゲートが通らないと、テンプレート自体の信頼性が損なわれる
+
+**教訓**:
+1. TEMPLATE 初期化は「1コマンド + 検証」で完走させる導線を提供すべき
+2. 初期化時にプロジェクト名・owner 等の置換を自動化し、手動編集を減らすべき
+3. 生成直後に smoke test（contract/構文チェック）を実行し、品質を保証すべき
+4. TEMPLATE 更新後は必ず初期化テストを回し、配布品質を維持すべき
+
+**対応**:
+- `scripts/dev/init_project_from_template.py` を追加し、1コマンド初期化を実現
+- `make template-init` と `make template-smoke` を追加
+- CI に template-init smoke job を追加し、TEMPLATE 更新時の品質を自動検証
+- `TEMPLATE/README.md` に初期化手順と運用ルールを追記
+
+---
+
+### 2026-03-01: TEMPLATE smoke は fail-open を許可しない
+
+**観測事実**:
+- `make template-smoke` は PASS したが、生成先 `pytest -q` は `no tests ran`（exit 5）だった
+- 生成先 `python3 scripts/dev/sync_template_bundle.py --check` は script 不在で失敗した
+- smoke では sync-check 失敗を許容しており、品質ゲートとしては偽陽性になっていた
+
+**教訓**:
+1. smoke は「失敗を許容して先へ進む」設計にしてはいけない
+2. 「PASS」の条件には、テスト実行件数と検証対象件数（0件禁止）を含めるべき
+3. テンプレート構造（`contracts/schemas`）と検証スクリプト参照先は常に一致させるべき
+
+**対応**:
+- 25章を `Reopen` し、Sprint 6 で template 検証実効性（fail-closed）を改善する計画を追加
+- 今後は template 完了判定前に「生成先 `pytest -q` が1件以上実行」「生成先 sync-check 実行可能」を必須確認する
+
+---
+
+### 2026-03-01: 高速実験導線は「profile契約 + force override + state短絡」をセットで設計する
+
+**観測事実**:
+- fast 実験を都度手動引数で回すと、repos/output/cache/state の指定漏れで成果物が混線しやすい
+- index/symbol-fit の再実行は差分がないケースが多く、毎回フル実行すると反復速度が落ちる
+- 一方で短絡のみだと復旧時に再計算できず、品質確認が詰まる
+
+**教訓**:
+1. 高速化は「暗黙運用」ではなく profile ファイルに契約として固定するべき
+2. 短絡実行は fingerprint ベースにし、再現不能なヒューリスティックを避けるべき
+3. 省略可能ステップには必ず `--force-*` を用意し、復旧経路を同一導線に残すべき
+
+**対応**:
+- `configs/experiment_profiles.v1.yaml` を導入し fast/full の既定値を明示化
+- `run_corpus_auto_adapt.py` に `state-file` と repo/symbol fingerprint 短絡を実装
+- `run_experiment_route.py` に `--profile` と force フラグ伝播を実装
+- `make experiment-fast` / `make experiment-daily-full` を追加して日常運用へ接続
+
+---
+
+### 2026-03-01: skip系フラグでもサマリ出力経路は常に作成する
+
+**観測事実**:
+- `run_corpus_auto_adapt.py --skip-parameter-search` 実行時に、`output_dir` 未作成のまま `auto_adapt_summary.json` を書こうとして失敗した
+- ステップ省略は「実行負荷の削減」であり、出力契約（summary 生成）を壊してはいけない
+
+**教訓**:
+1. `--skip-*` は処理のみ短絡し、成果物パスの契約は維持するべき
+2. summary/manifest のような監査資産は、どの実行モードでも生成されるべき
+
+**対応**:
+- `run_corpus_auto_adapt.py` で summary 書き込み前に `output_dir.mkdir(parents=True, exist_ok=True)` を追加
+- `skip-parameter-search` 条件でも summary 出力 PASS を実測確認した
+
+---
+
+### 2026-03-01: 実験導線の完了条件は「run_record 生成」まで含める
+
+**観測事実**:
+- Sprint 8 で Fast/Full の評価自体は完了したが、run_record 生成時に `runs/{run_id}` ディレクトリ不在で失敗した
+- KPI成果物（`final_summary.json`）があっても、記録資産（run_record/registry）が欠けると運用監査が不完全になる
+
+**教訓**:
+1. 実験導線の Done は「評価完了」ではなく「run_record まで完走」を基準にするべき
+2. route 層は run_record 呼び出し前に run_dir の存在を保証するべき
+3. 既存成果物を fallback 参照するだけでなく、run単位ディレクトリへの配置を標準化するべき
+
+**対応**:
+- `tasks/todo.md` に Sprint 9（run_record導線修復）を追加
+- 次実装で `run_experiment_route.py` の run_dir 自動作成と成果物移送を実装予定
 
 ---
 

@@ -27,6 +27,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 from agentretrieve.bench.corpus import Corpus, CorpusManager
 from agentretrieve.index.inverted import InvertedIndex
 
+AUTO_ADAPT_STATE_VERSION = "auto_adapt_state.v1"
+
 
 _LANG_MAP: dict[str, str] = {
     "rust": "rust",
@@ -196,6 +198,72 @@ def _build_index(source_root: Path, index_path: Path) -> dict[str, int]:
 
 def _stable_key(path_str: str) -> str:
     return hashlib.sha256(path_str.encode("utf-8")).hexdigest()
+
+
+def _stable_json_dumps(value: Any) -> str:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def _sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        while True:
+            chunk = f.read(1024 * 1024)
+            if not chunk:
+                break
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _resolve_tree_fingerprint(source_root: Path) -> str:
+    if not source_root.exists():
+        return "missing"
+
+    # Fast path for git repositories.
+    rev = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=str(source_root),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if rev.returncode == 0:
+        head = rev.stdout.strip()
+        if head:
+            return f"git:{head}"
+
+    digest = hashlib.sha256()
+    for root_dir, dirnames, filenames in os.walk(source_root):
+        dirnames[:] = [d for d in dirnames if d not in _SKIP_DIRS]
+        root_path = Path(root_dir)
+        for filename in sorted(filenames):
+            path = root_path / filename
+            try:
+                stat = path.stat()
+            except Exception:
+                continue
+            rel_path = str(path.relative_to(source_root)).replace("\\", "/")
+            digest.update(rel_path.encode("utf-8"))
+            digest.update(str(stat.st_size).encode("utf-8"))
+            digest.update(str(stat.st_mtime_ns).encode("utf-8"))
+    return f"tree:{digest.hexdigest()}"
+
+
+def _load_state(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {"version": AUTO_ADAPT_STATE_VERSION, "repos": {}, "symbol_fit": {}}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {"version": AUTO_ADAPT_STATE_VERSION, "repos": {}, "symbol_fit": {}}
+    if payload.get("version") != AUTO_ADAPT_STATE_VERSION:
+        return {"version": AUTO_ADAPT_STATE_VERSION, "repos": {}, "symbol_fit": {}}
+    return payload
+
+
+def _save_state(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def _scan_code_files(source_root: Path) -> list[CodeFile]:
@@ -676,6 +744,37 @@ def main() -> int:
         help="Skip parameter adaptation (run_full_pipeline).",
     )
     parser.add_argument(
+        "--grid-profile",
+        choices=["full", "fast"],
+        default="full",
+        help="Parameter search grid profile passed to run_full_pipeline.",
+    )
+    parser.add_argument(
+        "--search-cache-dir",
+        default="",
+        help="Optional search cache directory passed to run_full_pipeline.",
+    )
+    parser.add_argument(
+        "--state-file",
+        default="artifacts/experiments/pipeline/state/auto_adapt_state.v1.json",
+        help="State file path for step short-circuiting.",
+    )
+    parser.add_argument(
+        "--force-clone",
+        action="store_true",
+        help="Force clone/update even if local source exists.",
+    )
+    parser.add_argument(
+        "--force-index",
+        action="store_true",
+        help="Force index rebuild even when source fingerprints are unchanged.",
+    )
+    parser.add_argument(
+        "--force-symbol-fit",
+        action="store_true",
+        help="Force symbol-language weight fit even when inputs are unchanged.",
+    )
+    parser.add_argument(
         "--allow-missing-major-languages",
         action="store_true",
         help="Allow manifest that does not cover all major languages.",
@@ -687,6 +786,13 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    if args.skip_clone and args.force_clone:
+        raise RuntimeError("--skip-clone and --force-clone cannot be used together.")
+    if args.skip_index and args.force_index:
+        raise RuntimeError("--skip-index and --force-index cannot be used together.")
+    if args.skip_symbol_fit and args.force_symbol_fit:
+        raise RuntimeError("--skip-symbol-fit and --force-symbol-fit cannot be used together.")
+
     root = Path(__file__).resolve().parents[2]
     manifest_path = (root / args.manifest).resolve()
     taskset_path = (root / args.taskset).resolve()
@@ -697,6 +803,8 @@ def main() -> int:
     balanced_root = (root / args.balanced_root).resolve()
     raw_index_root = (root / args.raw_index_root).resolve()
     balanced_index_root = (root / args.balanced_index_root).resolve()
+    state_path = (root / args.state_file).resolve()
+    search_cache_dir = (root / args.search_cache_dir).resolve() if args.search_cache_dir else None
 
     manager = CorpusManager(root)
     corpora = manager.load_corpus_manifest(manifest_path)
@@ -734,9 +842,22 @@ def main() -> int:
     print(f"Repos with tasks: {selected_with_tasks}")
     print(f"Generated config: {generated_config_path}")
     print(f"Missing major languages: {missing_major or 'none'}")
+    print(f"Grid profile: {args.grid_profile}")
+    print(f"State file: {state_path}")
+    if search_cache_dir is not None:
+        print(f"Search cache dir: {search_cache_dir}")
 
-    index_stats: dict[str, dict[str, int]] = {}
-    raw_index_stats: dict[str, dict[str, int]] = {}
+    previous_state = _load_state(state_path)
+    previous_repo_state = previous_state.get("repos", {})
+    if not isinstance(previous_repo_state, dict):
+        previous_repo_state = {}
+
+    index_stats: dict[str, dict[str, Any]] = {}
+    raw_index_stats: dict[str, dict[str, Any]] = {}
+    index_reused_repos: list[str] = []
+    raw_index_reused_repos: list[str] = []
+    clone_reused_repos: list[str] = []
+    repo_fingerprints: dict[str, dict[str, str]] = {}
     raw_source_dirs: dict[str, Path] = {
         corpus.id: root / f"artifacts/datasets/raw/{corpus.id}" for corpus in selected
     }
@@ -758,8 +879,16 @@ def main() -> int:
             search_index_abs_paths[corpus.id] = balanced_index_root / f"{corpus.id}.index.json"
         fairness_summary["planned"] = True
 
-    if not args.skip_clone:
+    if args.dry_run and not args.skip_clone:
         for corpus in selected:
+            print(f"[clone] {corpus.id}: planned")
+    elif not args.skip_clone:
+        for corpus in selected:
+            raw_source = raw_source_dirs[corpus.id]
+            if raw_source.exists() and not args.force_clone:
+                print(f"[clone] {corpus.id}: skipped (already exists)")
+                clone_reused_repos.append(corpus.id)
+                continue
             repo_path = manager.clone_or_update_corpus(corpus)
             print(f"[clone] {corpus.id}: {repo_path}")
 
@@ -813,64 +942,201 @@ def main() -> int:
     if args.dry_run:
         return 0
 
+    current_repo_state: dict[str, dict[str, Any]] = {}
+    for corpus in selected:
+        repo_id = corpus.id
+        search_source_dir = source_dirs[repo_id]
+        raw_source_dir = raw_source_dirs[repo_id]
+        if not search_source_dir.exists():
+            raise RuntimeError(f"Source directory not found: {search_source_dir}")
+        if not raw_source_dir.exists():
+            raise RuntimeError(f"Raw source directory not found: {raw_source_dir}")
+        search_source_fingerprint = _resolve_tree_fingerprint(search_source_dir)
+        if raw_source_dir == search_source_dir:
+            raw_source_fingerprint = search_source_fingerprint
+        else:
+            raw_source_fingerprint = _resolve_tree_fingerprint(raw_source_dir)
+        repo_fingerprints[repo_id] = {
+            "search_source_fingerprint": search_source_fingerprint,
+            "raw_source_fingerprint": raw_source_fingerprint,
+        }
+
     if not args.skip_index:
         for corpus in selected:
-            source_dir = source_dirs[corpus.id]
-            if not source_dir.exists():
-                raise RuntimeError(f"Source directory not found: {source_dir}")
-            index_path = search_index_abs_paths[corpus.id]
-            stats = _build_index(source_dir, index_path)
-            index_stats[corpus.id] = stats
-            print(
-                f"[index][search] {corpus.id}: docs={stats['documents']} terms={stats['terms']} files={stats['indexed_files']}"
+            repo_id = corpus.id
+            source_dir = source_dirs[repo_id]
+            index_path = search_index_abs_paths[repo_id]
+            raw_index_path = raw_index_abs_paths[repo_id]
+            raw_source_dir = raw_source_dirs[repo_id]
+            prev = previous_repo_state.get(repo_id, {})
+            if not isinstance(prev, dict):
+                prev = {}
+
+            prev_search_fingerprint = prev.get("search_source_fingerprint", "")
+            prev_search_index_path = prev.get("search_index_path", "")
+            should_rebuild_search = (
+                args.force_index
+                or not index_path.exists()
+                or prev_search_fingerprint != repo_fingerprints[repo_id]["search_source_fingerprint"]
+                or prev_search_index_path != str(index_path)
             )
 
-            raw_index_path = raw_index_abs_paths[corpus.id]
-            raw_source_dir = raw_source_dirs[corpus.id]
-            if raw_index_path != index_path:
-                if not raw_source_dir.exists():
-                    raise RuntimeError(f"Raw source directory not found: {raw_source_dir}")
-                raw_stats = _build_index(raw_source_dir, raw_index_path)
-                raw_index_stats[corpus.id] = raw_stats
+            if should_rebuild_search:
+                stats = _build_index(source_dir, index_path)
+                stats["reused"] = False
+                index_stats[repo_id] = stats
                 print(
-                    f"[index][raw] {corpus.id}: docs={raw_stats['documents']} terms={raw_stats['terms']} files={raw_stats['indexed_files']}"
+                    f"[index][search] {repo_id}: docs={stats['documents']} terms={stats['terms']} files={stats['indexed_files']}"
                 )
+            else:
+                prev_stats = prev.get("search_index_stats", {})
+                reuse_stats = dict(prev_stats) if isinstance(prev_stats, dict) else {}
+                reuse_stats["reused"] = True
+                index_stats[repo_id] = reuse_stats
+                index_reused_repos.append(repo_id)
+                print(f"[index][search] {repo_id}: skipped (fingerprint unchanged)")
+
+            if raw_index_path == index_path:
+                shared_stats = dict(index_stats[repo_id])
+                shared_stats["shared_with_search"] = True
+                raw_index_stats[repo_id] = shared_stats
+                continue
+
+            prev_raw_fingerprint = prev.get("raw_source_fingerprint", "")
+            prev_raw_index_path = prev.get("raw_index_path", "")
+            should_rebuild_raw = (
+                args.force_index
+                or not raw_index_path.exists()
+                or prev_raw_fingerprint != repo_fingerprints[repo_id]["raw_source_fingerprint"]
+                or prev_raw_index_path != str(raw_index_path)
+            )
+
+            if should_rebuild_raw:
+                raw_stats = _build_index(raw_source_dir, raw_index_path)
+                raw_stats["reused"] = False
+                raw_index_stats[repo_id] = raw_stats
+                print(
+                    f"[index][raw] {repo_id}: docs={raw_stats['documents']} terms={raw_stats['terms']} files={raw_stats['indexed_files']}"
+                )
+            else:
+                prev_raw_stats = prev.get("raw_index_stats", {})
+                reuse_raw_stats = dict(prev_raw_stats) if isinstance(prev_raw_stats, dict) else {}
+                reuse_raw_stats["reused"] = True
+                raw_index_stats[repo_id] = reuse_raw_stats
+                raw_index_reused_repos.append(repo_id)
+                print(f"[index][raw] {repo_id}: skipped (fingerprint unchanged)")
+
+    for corpus in selected:
+        repo_id = corpus.id
+        prev = previous_repo_state.get(repo_id, {})
+        if not isinstance(prev, dict):
+            prev = {}
+        current_repo_state[repo_id] = {
+            "search_source_fingerprint": repo_fingerprints[repo_id]["search_source_fingerprint"],
+            "raw_source_fingerprint": repo_fingerprints[repo_id]["raw_source_fingerprint"],
+            "search_index_path": str(search_index_abs_paths[repo_id]),
+            "raw_index_path": str(raw_index_abs_paths[repo_id]),
+            "search_index_stats": index_stats.get(
+                repo_id,
+                dict(prev.get("search_index_stats", {}))
+                if isinstance(prev.get("search_index_stats", {}), dict)
+                else {},
+            ),
+            "raw_index_stats": raw_index_stats.get(
+                repo_id,
+                dict(prev.get("raw_index_stats", {}))
+                if isinstance(prev.get("raw_index_stats", {}), dict)
+                else {},
+            ),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
 
     did_symbol_fit = False
+    symbol_fit_reused = False
+    symbol_state = previous_state.get("symbol_fit", {})
+    if not isinstance(symbol_state, dict):
+        symbol_state = {}
     if not args.skip_symbol_fit:
         if selected_with_tasks:
-            _run(
-                [
-                    "python3",
-                    "scripts/benchmark/fit_symbol_language_weights.py",
-                    "--config",
-                    str(generated_config_path),
-                    "--taskset",
-                    str(taskset_path),
-                    "--output",
-                    str(symbol_output_path),
-                ],
-                cwd=root,
+            symbol_input_payload = {
+                "generated_config_sha256": _sha256_file(generated_config_path),
+                "taskset_sha256": _sha256_file(taskset_path),
+                "selected_with_tasks": selected_with_tasks,
+                "search_index_paths": {
+                    repo_id: str(search_index_abs_paths[repo_id]) for repo_id in selected_with_tasks
+                },
+                "search_source_fingerprints": {
+                    repo_id: repo_fingerprints[repo_id]["search_source_fingerprint"]
+                    for repo_id in selected_with_tasks
+                },
+            }
+            symbol_input_hash = hashlib.sha256(
+                _stable_json_dumps(symbol_input_payload).encode("utf-8")
+            ).hexdigest()
+            can_reuse_symbol_fit = (
+                not args.force_symbol_fit
+                and symbol_output_path.exists()
+                and symbol_state.get("input_hash") == symbol_input_hash
             )
-            did_symbol_fit = True
+            if can_reuse_symbol_fit:
+                symbol_fit_reused = True
+                print("[fit] skipped (input fingerprint unchanged)")
+            else:
+                _run(
+                    [
+                        "python3",
+                        "scripts/benchmark/fit_symbol_language_weights.py",
+                        "--config",
+                        str(generated_config_path),
+                        "--taskset",
+                        str(taskset_path),
+                        "--output",
+                        str(symbol_output_path),
+                    ],
+                    cwd=root,
+                )
+                did_symbol_fit = True
+            symbol_state = {
+                "input_hash": symbol_input_hash,
+                "input_payload": symbol_input_payload,
+                "output_path": str(symbol_output_path),
+                "output_sha256": _sha256_file(symbol_output_path)
+                if symbol_output_path.exists()
+                else "",
+                "reused": symbol_fit_reused,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
         else:
             print("[fit] skipped: no selected repositories have taskset entries.")
 
     if not args.skip_parameter_search:
         output_dir.mkdir(parents=True, exist_ok=True)
-        _run(
-            [
-                "python3",
-                "scripts/pipeline/run_full_pipeline.py",
-                "-c",
-                str(generated_config_path),
-                "-o",
-                str(output_dir),
-                "-w",
-                str(args.workers),
-            ],
-            cwd=root,
-        )
+        pipeline_cmd = [
+            "python3",
+            "scripts/pipeline/run_full_pipeline.py",
+            "-c",
+            str(generated_config_path),
+            "-o",
+            str(output_dir),
+            "-w",
+            str(args.workers),
+            "--grid-profile",
+            args.grid_profile,
+        ]
+        if search_cache_dir is not None:
+            pipeline_cmd.extend(["--search-cache-dir", str(search_cache_dir)])
+        _run(pipeline_cmd, cwd=root)
+
+    merged_repo_state = dict(previous_repo_state)
+    for repo_id, repo_state in current_repo_state.items():
+        merged_repo_state[repo_id] = repo_state
+    next_state = {
+        "version": AUTO_ADAPT_STATE_VERSION,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "repos": merged_repo_state,
+        "symbol_fit": symbol_state,
+    }
+    _save_state(state_path, next_state)
 
     summary = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -882,18 +1148,28 @@ def main() -> int:
         "missing_major_languages": missing_major,
         "fairness": fairness_summary,
         "index_mode": index_mode,
+        "grid_profile": args.grid_profile,
+        "search_cache_dir": str(search_cache_dir) if search_cache_dir is not None else "",
+        "state_file": str(state_path),
         "search_index_paths": search_index_paths,
         "raw_index_paths": raw_index_paths,
         "complex_repo": complex_repo_id or None,
         "index_stats": index_stats,
         "raw_index_stats": raw_index_stats,
+        "short_circuit": {
+            "clone_reused_repos": clone_reused_repos,
+            "index_reused_repos": sorted(index_reused_repos),
+            "raw_index_reused_repos": sorted(raw_index_reused_repos),
+            "symbol_fit_reused": symbol_fit_reused,
+        },
         "steps": {
             "clone": not args.skip_clone,
             "index": not args.skip_index,
-            "fit_symbol_weights": did_symbol_fit,
+            "fit_symbol_weights": did_symbol_fit or symbol_fit_reused,
             "parameter_search": not args.skip_parameter_search,
         },
     }
+    output_dir.mkdir(parents=True, exist_ok=True)
     summary_path = output_dir / "auto_adapt_summary.json"
     summary_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"Summary: {summary_path}")

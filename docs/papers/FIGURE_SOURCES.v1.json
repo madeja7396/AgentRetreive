@@ -1,0 +1,125 @@
+{
+  "version": "figure_sources.v1",
+  "description": "Mapping of paper figures/tables to their generator scripts and source artifacts",
+  "policy": {
+    "regeneration_required": true,
+    "manual_edit_prohibited": true,
+    "source_of_truth": "generator_script",
+    "validation": "ci_mandatory"
+  },
+  "figures": {
+    "retrieval_recall_by_repo": {
+      "type": "table",
+      "output_path": "artifacts/papers/figures/retrieval_recall_by_repo.csv",
+      "generator": {
+        "script": "scripts/benchmark/generate_report.py",
+        "function": "generate_retrieval_table",
+        "input_artifacts": [
+          "artifacts/experiments/pipeline/final_summary.json",
+          "artifacts/experiments/pipeline/aggregate_results.json"
+        ]
+      },
+      "description": "Recall@K and MRR by repository"
+    },
+    "retrieval_latency_by_repo": {
+      "type": "table",
+      "output_path": "artifacts/papers/figures/retrieval_latency_by_repo.csv",
+      "generator": {
+        "script": "scripts/benchmark/generate_report.py",
+        "function": "generate_latency_table",
+        "input_artifacts": [
+          "artifacts/experiments/pipeline/final_summary.json"
+        ]
+      },
+      "description": "Query latency percentiles by repository"
+    },
+    "tool_call_comparison": {
+      "type": "table",
+      "output_path": "artifacts/papers/figures/tool_call_comparison.csv",
+      "generator": {
+        "script": "scripts/papers/generate_figure_assets.py",
+        "function": "generate_toolcall_comparison",
+        "input_artifacts": [
+          "artifacts/experiments/runs/{run_id}/tool_call_reduction.json"
+        ]
+      },
+      "description": "Tool call reduction vs baselines"
+    },
+    "micro_benchmark_summary": {
+      "type": "table",
+      "output_path": "artifacts/papers/figures/micro_benchmark_summary.csv",
+      "generator": {
+        "script": "scripts/papers/generate_figure_assets.py",
+        "function": "generate_micro_summary",
+        "input_artifacts": [
+          "artifacts/experiments/runs/{run_id}/micro_benchmark.json"
+        ]
+      },
+      "description": "Build/query latency and resource usage"
+    },
+    "ablation_study": {
+      "type": "table",
+      "output_path": "artifacts/papers/figures/ablation_study.csv",
+      "generator": {
+        "script": "scripts/papers/generate_figure_assets.py",
+        "function": "generate_ablation_table",
+        "input_artifacts": [
+          "artifacts/experiments/runs/{run_id}/ablation.json"
+        ]
+      },
+      "description": "Ablation study results (BM25 only / +symbol / +near / +prior)"
+    },
+    "stability_analysis": {
+      "type": "table",
+      "output_path": "artifacts/papers/figures/stability_analysis.csv",
+      "generator": {
+        "script": "scripts/papers/generate_figure_assets.py",
+        "function": "generate_stability_table",
+        "input_artifacts": [
+          "artifacts/experiments/runs/{run_id}/stability.json"
+        ]
+      },
+      "description": "Repeatability analysis (n>=5) with mean/std/CI"
+    },
+    "cross_env_reproducibility": {
+      "type": "table",
+      "output_path": "artifacts/papers/figures/cross_env_reproducibility.csv",
+      "generator": {
+        "script": "scripts/papers/generate_figure_assets.py",
+        "function": "generate_cross_env_table",
+        "input_artifacts": [
+          "artifacts/experiments/runs/{run_id}/cross_env_py311/cross_env_repro_report.tol30.json"
+        ]
+      },
+      "description": "Cross-environment reproducibility check results"
+    },
+    "symbol_extraction_coverage": {
+      "type": "table",
+      "output_path": "artifacts/papers/figures/symbol_extraction_coverage.csv",
+      "generator": {
+        "script": "scripts/papers/generate_figure_assets.py",
+        "function": "generate_coverage_table",
+        "input_artifacts": [
+          "artifacts/datasets/fd.index.json"
+        ]
+      },
+      "description": "Symbol extraction coverage by language (R-003 monitoring)"
+    }
+  },
+  "integrity_rules": {
+    "file_hash_required": true,
+    "timestamp_check": "generator_after_output",
+    "input_artifact_presence": "required",
+    "generator_exit_code": "must_be_zero"
+  },
+  "validation": {
+    "skip_patterns": [
+      "*.bak",
+      "*.tmp",
+      "*.draft.*"
+    ],
+    "fail_on_missing_generator": true,
+    "fail_on_hash_mismatch": true,
+    "warn_on_manual_edit": true
+  }
+}

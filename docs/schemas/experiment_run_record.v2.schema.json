@@ -1,0 +1,222 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sch_experiment_run_record_v2",
+  "title": "Experiment Run Record v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "run_id",
+    "created_at_utc",
+    "git",
+    "dataset_id",
+    "config",
+    "seed",
+    "environment",
+    "timing",
+    "metrics",
+    "artifacts",
+    "status"
+  ],
+  "properties": {
+    "version": {
+      "const": "run_record.v2"
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^run_[a-z0-9_]+$"
+    },
+    "created_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "git": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "commit",
+        "dirty"
+      ],
+      "properties": {
+        "commit": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "dirty": {
+          "type": "boolean"
+        }
+      }
+    },
+    "dataset_id": {
+      "type": "string",
+      "pattern": "^ds_[a-z0-9_]+$"
+    },
+    "config": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "seed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "os",
+        "cpu",
+        "ram_gb",
+        "toolchain"
+      ],
+      "properties": {
+        "os": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cpu": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ram_gb": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "toolchain": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "timing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "start_utc",
+        "end_utc"
+      ],
+      "properties": {
+        "start_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "end_utc": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mrr_at_10",
+        "ndcg_at_10",
+        "recall_at_10",
+        "tool_calls_per_task",
+        "stdout_bytes_per_task",
+        "ttfc_ms_p50",
+        "ttfc_ms_p95",
+        "ttfc_ms_p99",
+        "avg_latency_ms"
+      ],
+      "properties": {
+        "mrr_at_10": {
+          "type": "number"
+        },
+        "ndcg_at_10": {
+          "type": "number"
+        },
+        "recall_at_10": {
+          "type": "number"
+        },
+        "tool_calls_per_task": {
+          "type": "number"
+        },
+        "stdout_bytes_per_task": {
+          "type": "number"
+        },
+        "ttfc_ms_p50": {
+          "type": "number"
+        },
+        "ttfc_ms_p95": {
+          "type": "number"
+        },
+        "ttfc_ms_p99": {
+          "type": "number"
+        },
+        "avg_latency_ms": {
+          "type": "number"
+        }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "raw_metrics_path",
+        "logs_path",
+        "summary_path"
+      ],
+      "properties": {
+        "raw_metrics_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "logs_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "summary_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "retrieval_glob": {
+          "type": "string"
+        },
+        "comparison_glob": {
+          "type": "string"
+        },
+        "micro_path": {
+          "type": "string"
+        },
+        "e2e_path": {
+          "type": "string"
+        },
+        "ablation_path": {
+          "type": "string"
+        },
+        "stability_path": {
+          "type": "string"
+        }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "success",
+        "failed",
+        "partial"
+      ]
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}
