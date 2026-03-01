@@ -228,6 +228,7 @@ parameter_search:
 | `make pipeline` | フルパイプライン実行 |
 | `make test` | クイックテスト |
 | `make validate` | 契約検証 |
+| `make phase3-complete RUN_ID=<run_id>` | Phase3 残タスク（micro/e2e/ablation/stability）を実測生成 |
 | `make clean` | 出力削除 |
 | `make report` | レポート生成 |
 

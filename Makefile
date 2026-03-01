@@ -13,6 +13,7 @@ help:
 	@echo "  make experiment-ready - Run preflight checks only (contracts + tests)"
 	@echo "  make experiment  - Preflight + auto-adapt + final evaluation (taskset repos)"
 	@echo "  make experiment-all - Preflight + auto-adapt + final evaluation (all support languages)"
+	@echo "  make phase3-complete RUN_ID=<run_id> - Generate micro/e2e/ablation/stability artifacts"
 	@echo "  make validate    - Run contract harness validation"
 	@echo "  make clean       - Clean experiment outputs"
 	@echo "  make report      - Generate final report"
@@ -41,6 +42,11 @@ experiment:
 experiment-all:
 	@echo "Running full experiment route (all support languages)..."
 	@AR_CLONE_TIMEOUT_SEC=$${AR_CLONE_TIMEOUT_SEC:-2400} python3 scripts/pipeline/run_experiment_route.py --index-all
+
+phase3-complete:
+	@echo "Completing Phase 3 metrics for run_id=$(RUN_ID)"
+	@test -n "$(RUN_ID)" || (echo "RUN_ID is required: make phase3-complete RUN_ID=run_..." && exit 1)
+	@python3 scripts/benchmark/complete_phase3.py --run-id "$(RUN_ID)" --repeats 5
 
 test:
 	@echo "Running quick test..."

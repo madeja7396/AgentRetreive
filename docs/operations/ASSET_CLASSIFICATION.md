@@ -36,6 +36,10 @@
 | `scripts/dev/prepare_worktree.sh` | active | 運用初期化 | `docs/operations/AGENTD.md` |
 | `scripts/benchmark/fit_symbol_language_weights.py` | active | 重み学習の公式導線 | `scripts/pipeline/run_corpus_auto_adapt.py` |
 | `scripts/benchmark/generate_report.py` | active | レポート生成の公式導線 | `Makefile report` |
+| `scripts/benchmark/complete_phase3.py` | active | Phase3残タスク（micro/e2e/ablation/stability）の実測生成 | `Makefile phase3-complete` |
+| `scripts/benchmark/analyze_toolcall_reduction.py` | active | tool-call削減率の定量証明 | `tasks/todo.md` |
+| `scripts/pipeline/run_cross_env_repro.py` | active | cross-env再現検証（Python 3.11） | `scripts/dev/run_cross_env_repro.sh` |
+| `scripts/dev/run_cross_env_repro.sh` | active | cross-env再現の1コマンド実行入口 | `docs/papers/ARTIFACT_APPENDIX.md` |
 | `scripts/benchmark/compare_all_tools.py` | incubation | 比較実験の補助スクリプト | `scripts/README.md` |
 | `scripts/benchmark/compare_baselines.py` | incubation | 比較実験の補助スクリプト | `scripts/README.md` |
 | `scripts/benchmark/compare_with_optimal.py` | incubation | 比較実験の補助スクリプト | `scripts/README.md` |
@@ -61,6 +65,8 @@
 | `outline.md` | archive | 企画メモ履歴 | `docs/README.md` |
 | `plan.md` | archive | 初期計画メモ履歴 | `docs/README.md` |
 | `give.md` | archive | インプット原文履歴 | `docs/README.md` |
+| `TEMPLATE/README.md` | active | 再利用向けテンプレートバンドルの入口 | `docs/README.md` |
+| `TEMPLATE/PROJECT_STRUCTURE.md` | active | 新規プロジェクト構成の標準 | `docs/README.md` |
 
 ## 運用ルール
 

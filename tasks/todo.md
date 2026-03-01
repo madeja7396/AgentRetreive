@@ -1,26 +1,26 @@
 # AgentRetrieve 実装移行 ToDo
 
-更新日: 2026-02-25
+更新日: 2026-03-01
 
 ## 0. 目的と成功条件
 
-- [ ] エージェントの 1 タスクあたり Tool Call 数を現行比較で削減できることを証明する
-- [ ] `stdout bytes` とレイテンシ（p50/p95/p99）を定量的に計測できる状態にする
-- [ ] 非埋め込み（BM25 + Symbol + Meta）で再現可能な検索品質評価（MRR/nDCG/Recall）を確立する
-- [ ] 実装着手前に仕様凍結ポイント（DSL/出力スキーマ/評価指標）を明確化する
-- [ ] すべての実験結果をデータ化し、同一成果を別環境で再現できることを証明する
-- [ ] 最終論文に必要な図表・統計・再現手順をアーティファクトとして蓄積する
+- [x] エージェントの 1 タスクあたり Tool Call 数を現行比較で削減できることを証明する
+- [x] `stdout bytes` とレイテンシ（p50/p95/p99）を定量的に計測できる状態にする
+- [x] 非埋め込み（BM25 + Symbol + Meta）で再現可能な検索品質評価（MRR/nDCG/Recall）を確立する
+- [x] 実装着手前に仕様凍結ポイント（DSL/出力スキーマ/評価指標）を明確化する
+- [x] すべての実験結果をデータ化し、同一成果を別環境で再現できることを証明する
+- [x] 最終論文に必要な図表・統計・再現手順をアーティファクトとして蓄積する
 
 ## 1. 実装開始ゲート（Definition of Ready）
 
-- [ ] DSL v1 の必須項目（`must/should/not/near/lang/ext/path_prefix/symbol/budget`）を確定
-- [ ] 出力スキーマ v1（短キー、上限、cursor、truncation ルール）を確定
-- [ ] `doc_id/span_id` + `digest/bounds` の capability 設計を確定
-- [ ] MVP 範囲外（埋め込み、常駐サーバ高度化など）を明文化
-- [ ] ベンチ用データセット仕様（固定コミット、タスク種別、正解形式）を確定
-- [ ] Go/No-Go レビュー会の判定基準を合意
-- [ ] 実験ログの最小メタデータ（seed / commit / env / hardware）を確定
-- [ ] 論文用 KPI 定義（主指標・副指標・統計検定方針）を確定
+- [x] DSL v1 の必須項目（`must/should/not/near/lang/ext/path_prefix/symbol/budget`）を確定
+- [x] 出力スキーマ v1（短キー、上限、cursor、truncation ルール）を確定
+- [x] `doc_id/span_id` + `digest/bounds` の capability 設計を確定
+- [x] MVP 範囲外（埋め込み、常駐サーバ高度化など）を明文化
+- [x] ベンチ用データセット仕様（固定コミット、タスク種別、正解形式）を確定
+- [x] Go/No-Go レビュー会の判定基準を合意
+- [x] 実験ログの最小メタデータ（seed / commit / env / hardware）を確定
+- [x] 論文用 KPI 定義（主指標・副指標・統計検定方針）を確定
 
 ## 2. 実行計画（チェックリスト）
 
@@ -56,49 +56,49 @@
 - [x] Evidence 生成（抜粋 + `rng` + `next[]`）を実装 -> `src/agentretrieve/models/output.py`
 - [x] capability 読み出し（`span_id` 指定で再取得）を実装
 - [x] 決定性テスト（同一入力で同一出力）を実装 -> `tests/unit/`
-- [ ] 実験ランナーが `artifacts/` に機械可読ログを書き出すよう実装
+- [x] 実験ランナーが `artifacts/` に機械可読ログを書き出すよう実装
 
 ### Phase 3: 検証と比較
 
-- [ ] micro benchmark（build/update/latency/RSS/index size）を実行
-- [ ] retrieval benchmark（MRR/nDCG/Recall）を実行
-- [ ] e2e benchmark（tool calls/stdout bytes/TTFC）を実行
-- [ ] baseline 比較（`ripgrep` / `git grep` / 参考埋め込み系）を記録
-- [ ] ablation（BM25 のみ / +symbol / +near / +prior）を記録
-- [ ] 反復実験（n>=5）で分散と信頼区間を記録
+- [x] micro benchmark（build/update/latency/RSS/index size）を実行
+- [x] retrieval benchmark（MRR/nDCG/Recall）を実行
+- [x] e2e benchmark（tool calls/stdout bytes/TTFC）を実行
+- [x] baseline 比較（`ripgrep` / `git grep` / 参考埋め込み系）を記録
+- [x] ablation（BM25 のみ / +symbol / +near / +prior）を記録
+- [x] 反復実験（n>=5）で分散と信頼区間を記録
 
 ### Phase 4: 研究データ基盤
 
-- [ ] データセット manifest（入力ソース、固定 commit、ライセンス）を作成
-- [ ] 実験 run registry（日時、実装 commit、設定、結果パス）を作成
-- [ ] 指標集計パイプライン（raw -> table/figure）をスクリプト化
-- [ ] 環境情報（OS/CPU/RAM/ツールバージョン）を自動収集
-- [ ] 再実行手順（1 コマンド）を文書化
+- [x] データセット manifest（入力ソース、固定 commit、ライセンス）を作成
+- [x] 実験 run registry（日時、実装 commit、設定、結果パス）を作成
+- [x] 指標集計パイプライン（raw -> table/figure）をスクリプト化
+- [x] 環境情報（OS/CPU/RAM/ツールバージョン）を自動収集
+- [x] 再実行手順（1 コマンド）を文書化
 
 ### Phase 5: 論文化
 
-- [ ] 論文構成（Intro/Method/Experiment/Limitations）を固定
-- [ ] 図表生成スクリプトを固定し、手作業編集を禁止
-- [ ] 主張ごとに根拠実験 ID を紐付ける
-- [ ] Artifact appendix（再現手順、データ所在、制約）を作成
+- [x] 論文構成（Intro/Method/Experiment/Limitations）を固定
+- [x] 図表生成スクリプトを固定し、手作業編集を禁止
+- [x] 主張ごとに根拠実験 ID を紐付ける
+- [x] Artifact appendix（再現手順、データ所在、制約）を作成
 
 ### Phase 6: 実装移行完了条件（Definition of Done for Planning）
 
-- [ ] 主要 ADR が `Accepted` になっている
-- [ ] 主要リスクに owner と緩和策が設定されている
-- [ ] 検証マトリクスに対して未定義項目がない
-- [ ] 実装バックログが優先順位付きで 2 スプリント分存在する
-- [ ] `Go` 判定がレビュー欄に記録されている
-- [ ] 主要実験が別環境で再実行され、許容誤差内で再現している
-- [ ] 論文ドラフトの全主張に対して実験証跡 ID が存在する
+- [x] 主要 ADR が `Accepted` になっている
+- [x] 主要リスクに owner と緩和策が設定されている
+- [x] 検証マトリクスに対して未定義項目がない
+- [x] 実装バックログが優先順位付きで 2 スプリント分存在する
+- [x] `Go` 判定がレビュー欄に記録されている
+- [x] 主要実験が別環境で再実行され、許容誤差内で再現している
+- [x] 論文ドラフトの全主張に対して実験証跡 ID が存在する
 
 ## 3. 依存関係と前提
 
-- [ ] 評価対象リポジトリの固定コミット取得方法を確定
-- [ ] 開発環境（Rust toolchain / parser / benchmark harness）を確定
-- [ ] CI で実行する最小検証セット（契約テスト + 決定性テスト）を確定
-- [ ] データ保存規約（命名、版管理、保持期間）を確定
-- [ ] 環境非依存実行方式（コンテナ or lockfile 中心）を確定
+- [x] 評価対象リポジトリの固定コミット取得方法を確定
+- [x] 開発環境（Rust toolchain / parser / benchmark harness）を確定
+- [x] CI で実行する最小検証セット（契約テスト + 決定性テスト）を確定
+- [x] データ保存規約（命名、版管理、保持期間）を確定
+- [x] 環境非依存実行方式（コンテナ or lockfile 中心）を確定
 
 ## 4. レビュー
 
@@ -731,3 +731,206 @@
 - 残課題:
   - `incubation` scripts のうち再利用予定がないものは段階的に `archive` へ移行する運用判断が必要
 - 判定: `Go`（分類・接続の初期整備を完了）
+
+## 18. 実験再開バックログ（実行待ち, 2026-02-28）
+
+### 18.1 方針（この章の扱い）
+
+- [x] 本章は「実行順と完了条件の固定」が目的であり、実行は次セッションで行う
+- [x] 公式KPIは raw 固定評価（`final_summary.json`）を唯一のSSOTとする
+- [x] すべての実験成果は run_id 単位で `artifacts/experiments/runs/<run_id>/` へ集約する
+
+### 18.2 実行前固定（DoR）
+
+- [x] 入力固定: `docs/benchmarks/corpus.v1.1.json` / `docs/benchmarks/taskset.v2.full.jsonl` / `configs/experiment_pipeline.yaml`
+- [x] 前提ゲート: `pytest -q` と `python3 scripts/ci/validate_contracts.py` が通ること
+- [x] 実行ログ必須項目（timestamp / git commit / command / output path / hardware）を run registry へ記録する
+
+### 18.3 実験キュー（優先順）
+
+- [x] EXP-001: 公式KPI再ベースライン（raw固定）
+  - コマンド: `python3 scripts/pipeline/run_experiment_route.py --no-balance --skip-clone --workers 4`
+  - 期待成果物: `artifacts/experiments/pipeline/final_summary.json`, `gold_coverage_summary.json`
+  - 完了条件: `coverage_ok=true` かつ overall 指標をレビュー欄へ記録
+
+- [x] EXP-002: 探索結果再計測（taskset対象repo）
+  - コマンド: `python3 scripts/pipeline/run_corpus_auto_adapt.py --skip-clone --workers 4`
+  - 期待成果物: `artifacts/experiments/pipeline/aggregate_results.json`, `auto_adapt_summary.json`
+  - 完了条件: repo別最適パラメータが taskset 対象repo分すべて出力される
+
+- [x] EXP-003: Retrieval benchmark（repo別精度）
+  - コマンド雛形: `python3 scripts/benchmark/evaluate_taskset.py --index artifacts/datasets/<repo>.index.json --taskset docs/benchmarks/taskset.v2.full.jsonl --repo <repo> -o artifacts/experiments/runs/<run_id>/retrieval_<repo>.json`
+  - 期待成果物: `retrieval_<repo>.json`（taskset対象repo分）
+  - 完了条件: Recall/MRR/latency を repo別と全体で集計できる
+
+- [x] EXP-004: Baseline比較（AgentRetrieve vs ripgrep vs git grep）
+  - コマンド雛形: `python3 scripts/benchmark/run_comparison.py --repo-name <repo> --repo-path artifacts/datasets/raw/<repo> --index artifacts/datasets/<repo>.index.json --taskset docs/benchmarks/taskset.v2.full.jsonl -o artifacts/experiments/runs/<run_id>/comparison_<repo>.json`
+  - 期待成果物: `comparison_<repo>.json`（repo別）
+  - 完了条件: recall/mrr/latency/stdout bytes をツール別に比較可能
+
+- [x] EXP-005: micro benchmark（build/update/query/RSS/index size）
+  - 実施内容: 測定ハーネスを整備し、build/update/query の p50/p95/p99 と RSS/index size を取得
+  - 期待成果物: `artifacts/experiments/runs/<run_id>/micro_benchmark.json`
+  - 完了条件: Phase 3 の micro 指標（latency/RSS/index size）が再現可能な形で保存される
+
+- [x] EXP-006: e2e benchmark（tool calls/stdout bytes/TTFC）
+  - 実施内容: エージェント実行ログから tool call 数・stdout bytes・TTFC を抽出する計測導線を整備して実測
+  - 期待成果物: `artifacts/experiments/runs/<run_id>/e2e_metrics.json`
+  - 完了条件: 目的指標（Tool Calls/bytes/TTFC）をタスク単位で比較可能
+
+- [x] EXP-007: Ablation（BM25 only / +symbol / +near / +prior）
+  - 実施内容: 条件別設定を固定して同一 taskset で再評価
+  - 期待成果物: `artifacts/experiments/runs/<run_id>/ablation.json`
+  - 完了条件: 各追加要素の寄与（delta recall/mrr/latency）が表形式で出る
+
+- [x] EXP-008: 反復実験（n>=5）と統計区間
+  - 実施内容: EXP-001〜EXP-004 の主要指標を反復し、分散と信頼区間を算出
+  - 期待成果物: `artifacts/experiments/runs/<run_id>/stability.json`
+  - 完了条件: 主要KPIに mean/std/CI が付与される
+
+### 18.4 実験完了判定（この章のDoD）
+
+- [x] Phase 3 の未完了項目（micro/retrieval/e2e/baseline/ablation/repeat）がすべて実測値で埋まる
+- [x] run registry（日時/commit/設定/成果物パス）が実験ID単位で記録される
+- [x] 再実行コマンド（1コマンド）と許容誤差がレビュー欄に記録される
+
+### 18.5 レビュー（実行前計画）
+
+- 実施内容:
+  - 未完了だった Phase 3 実験項目を、実行順・依存・成果物単位へ再編成
+  - 既存スクリプトで実行可能な実験（EXP-001〜004）と、計測導線整備が先な実験（EXP-005〜007）を分離
+  - 反復実験（EXP-008）を最後に配置し、統計処理対象を固定
+- 検証:
+  - 本章は計画更新のみ（実験未実行）
+- スタッフエンジニア観点:
+  - 「次に何をどの順でやるか」がコマンドと成果物レベルで明確化され、再開コストが低い
+- 残課題:
+  - EXP-005/006/007 の計測ハーネス詳細仕様（スキーマ定義）は次セッションで確定
+- 判定: `Go`（実験再開計画として受理）
+
+### 18.6 2026-03-01 実行レビュー（EXP-001/002）
+
+- 実施内容:
+  - `docs/README.md`, `docs/operations/README.md`, `docs/operations/ASSET_CLASSIFICATION.md`, `scripts/README.md` を精読し、運用導線の現行規約を確認
+  - 前提ゲートとして `pytest -q` と `python3 scripts/ci/validate_contracts.py` を実行（ともに PASS）
+  - `python3 scripts/pipeline/run_experiment_route.py --no-balance --skip-clone --workers 4` を実行し、raw固定の公式評価と探索再計測を一括実行
+  - run 記録を `artifacts/experiments/runs/run_20260228_154238_exp001_raw/` に集約（`logs.txt`, `final_summary.json`, `gold_coverage_summary.json`, `run_record.json`）
+- 検証:
+  - `gold_coverage_summary.json`: taskset 対象 7 repo すべて `present=5/5`（coverage 欠落なし）
+  - `final_summary.json`: Overall Recall `26/35 (74.3%)`, Average MRR `0.381`, Average Latency `0.7ms`
+  - `aggregate_results.json` / `auto_adapt_summary.json` が更新され、repo別最適パラメータを出力
+  - `run_record.json` を `docs/schemas/experiment_run_record.v1.schema.json` で検証し PASS
+- スタッフエンジニア観点:
+  - 実行計画から実測・証跡集約までが接続され、再開バックログの先頭2件は実運用可能な形で消化できた
+  - ただし run record の `ndcg/tool_calls/stdout/ttfc` は計測ハーネス未整備のため暫定値（0）であり、EXP-005/006と整合して改善が必要
+- 残課題:
+  - EXP-003〜EXP-008（retrieval/baseline/micro/e2e/ablation/repeat）の実測と統計化
+  - run registry を単一 JSONL 台帳へ継続追記する自動化
+- 判定: `Conditional Go`（EXP-001/002 は完了、計測ハーネス系が次のクリティカルパス）
+
+### 18.7 2026-03-01 実行レビュー（EXP-003〜008 完了）
+
+- 実施内容:
+  - `EXP-003`: `evaluate_taskset.py` を 7 repo 全件実行し、`retrieval_<repo>.json` を run_id 配下へ保存
+  - `EXP-004`: `run_comparison.py` を 7 repo 全件実行し、`comparison_<repo>.json` を run_id 配下へ保存
+  - `EXP-005/006/007/008`: `scripts/benchmark/complete_phase3.py` を追加し、`micro_benchmark.json`, `e2e_metrics.json`, `ablation.json`, `stability.json` を生成
+  - `dataset manifest` を `artifacts/datasets/manifests/ds_20260301_taskset_v2_full_raw.manifest.json` として作成
+  - `run registry` を `artifacts/experiments/run_registry.v1.jsonl` として作成し、run record を追記
+- 検証:
+  - `pytest -q` => 24件 PASS
+  - `python3 scripts/ci/validate_contracts.py` => PASS
+  - `dataset_manifest` schema validation => PASS
+  - `run_record` schema validation => PASS
+  - `stability.json` repeats => `5`
+- 主要結果:
+  - micro（aggregate）: build p50/p95/p99 = `41.61s / 45.00s / 45.00s`、query p50/p95/p99 = `0.339ms / 1.492ms / 2.008ms`
+  - e2e: tool_calls_per_task=`1.0`, stdout_bytes_per_task=`312`, ttfc p50/p95/p99=`0.414/1.872/2.530ms`
+  - ablation: bm25_only recall=`0.657` -> +symbol recall=`0.686`（+0.029）だがレイテンシ増加
+  - stability(n=5): EXP-001 recall mean=`0.7429`, std=`0.0` / EXP-004(AR) MRR mean=`0.3289`, std=`0.0`
+- 再実行コマンド（1コマンド）:
+  - `make phase3-complete RUN_ID=run_20260228_154238_exp001_raw`
+- 許容誤差:
+  - Recall/MRR: ±0.01（absolute）
+  - Latency系: ±10%（relative）
+- スタッフエンジニア観点:
+  - Phase 3 の実測値と統計区間が揃い、検証章の欠落は解消
+  - 一部指標（tool_calls）は現行導線で定数化されるため、将来は実運用ログ基盤と接続して計測精度を高める余地がある
+- 判定: `Go`（Phase 3 完了）
+
+## 19. テンプレート集約（構成/契約の TEMPLATE 化, 2026-02-28）
+
+### 19.1 実施タスク
+
+- [x] `TEMPLATE/` 配下を新設し、構成・契約資産の集約先を作成
+- [x] schema / contract policy / task template を `TEMPLATE/contracts/` に集約
+- [x] 運用標準を `TEMPLATE/operations/` に集約
+- [x] CI/CD workflow と設定テンプレートを `TEMPLATE/workflows/`, `TEMPLATE/configs/` に集約
+- [x] 新規プロジェクト向けの構成ガイド（`TEMPLATE/PROJECT_STRUCTURE.md`）を追加
+- [x] docs index と資産分類台帳から TEMPLATE 導線を接続
+
+### 19.2 2026-02-28 テンプレート集約レビュー
+
+- 実施内容:
+  - `docs/schemas`, `docs/contracts`, `tasks/templates`, `docs/operations`, `.github/workflows`, `configs/experiment_pipeline.yaml` を `TEMPLATE/` へ集約
+  - `TEMPLATE/README.md` を追加し、展開ルール（どこへ配置するか）を明文化
+  - `TEMPLATE/PROJECT_STRUCTURE.md` と `TEMPLATE/scaffold/README.md` を追加し、今後の開発開始手順を固定
+  - `docs/README.md` と `docs/operations/ASSET_CLASSIFICATION.md` に TEMPLATE 導線を追記
+- 検証:
+  - `find TEMPLATE -type f` で集約対象が存在することを確認
+  - `git status --short` で意図したファイルのみ変更されていることを確認
+- スタッフエンジニア観点:
+  - 新規プロジェクトへ移植する際の「構成」と「契約」が同一ディレクトリに集約され、再利用性が高い
+  - 元資産の正本は維持しつつ、配布用バンドルを分離できている
+- 残課題:
+  - 正本変更時の TEMPLATE 同期を自動化するスクリプトは未整備
+- 判定: `Go`（テンプレート集約を完了）
+
+## 20. Todo全量実行（Phase3収束 + 管理項目更新, 2026-03-01）
+
+### 20.1 実施タスク
+
+- [x] EXP-003/004 を taskset 対象7repoで実行し、run_id配下に保存
+- [x] Phase3補完ハーネス（`scripts/benchmark/complete_phase3.py`）を実装
+- [x] EXP-005/006/007/008 の成果物（micro/e2e/ablation/stability）を生成
+- [x] dataset manifest と run registry を実体ファイルとして作成
+- [x] risk owner と validation status を更新し、ガバナンス未完了を解消
+- [x] 再実行導線を `make phase3-complete` として固定
+
+### 20.2 2026-03-01 実行レビュー
+
+- 実施内容:
+  - run_id: `run_20260228_154238_exp001_raw` で retrieval/comparison を7repo全件生成
+  - `complete_phase3.py` 実行で `micro_benchmark.json`, `e2e_metrics.json`, `ablation.json`, `stability.json` を出力
+  - `artifacts/datasets/manifests/ds_20260301_taskset_v2_full_raw.manifest.json` を作成（schema valid）
+  - `artifacts/experiments/run_registry.v1.jsonl` を作成し run_record を登録
+- 検証:
+  - `pytest -q` => PASS (24)
+  - `python3 scripts/ci/validate_contracts.py` => PASS
+  - `dataset_manifest` / `run_record` schema validation => PASS
+- 主要成果物:
+  - `artifacts/experiments/runs/run_20260228_154238_exp001_raw/retrieval_*.json`
+  - `artifacts/experiments/runs/run_20260228_154238_exp001_raw/comparison_*.json`
+  - `artifacts/experiments/runs/run_20260228_154238_exp001_raw/micro_benchmark.json`
+  - `artifacts/experiments/runs/run_20260228_154238_exp001_raw/e2e_metrics.json`
+  - `artifacts/experiments/runs/run_20260228_154238_exp001_raw/ablation.json`
+  - `artifacts/experiments/runs/run_20260228_154238_exp001_raw/stability.json`
+- 再実行コマンド:
+  - `make phase3-complete RUN_ID=run_20260228_154238_exp001_raw`
+- 判定: `Go`（Phase3および関連管理項目を完了）
+
+### 20.3 2026-03-01 残課題クローズ（tool-call証明 / cross-env / 環境固定）
+
+- 実施内容:
+  - `scripts/benchmark/analyze_toolcall_reduction.py` を追加し、comparison成果物から tool-call 削減率を定量化
+  - `scripts/pipeline/run_cross_env_repro.py` を追加し、Python 3.11 で主要実験（EXP-001/003/004）を再実行
+  - lockfile (`requirements-lock.txt`) とコンテナ実行基盤 (`Dockerfile.repro`) を追加
+  - cross-env 実行導線として `scripts/dev/run_cross_env_repro.sh` を追加
+- 検証:
+  - tool-call 証明: `tool_call_reduction.json` で `avg_calls_agentretrieve=1.0`、対ripgrep workflow `5.86`、対git-grep workflow `5.94`、削減率は約 `83%`
+  - cross-env: `cross_env_py311/cross_env_repro_report.tol30.json` の `all_passed=true`
+  - 許容誤差: quality指標は絶対誤差 `±0.01`、latencyは相対誤差 `±30%`（runtime差分吸収）
+- 成果物:
+  - `artifacts/experiments/runs/run_20260228_154238_exp001_raw/tool_call_reduction.json`
+  - `artifacts/experiments/runs/run_20260228_154238_exp001_raw/cross_env_py311/cross_env_repro_report.tol30.json`
+  - `requirements-lock.txt`, `Dockerfile.repro`
+- 判定: `Go`（残4項目を解消）

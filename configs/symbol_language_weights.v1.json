@@ -10,7 +10,7 @@
     "rust": -0.6576655446911599
   },
   "metadata": {
-    "generated_at": "2026-02-28T14:08:53.818487+00:00",
+    "generated_at": "2026-02-28T15:45:22.871745+00:00",
     "method": "logistic_regression_with_language_interaction",
     "taskset": "/mnt/d/dev/AgentRetrieve/docs/benchmarks/taskset.v2.full.jsonl",
     "config": "/mnt/d/dev/AgentRetrieve/artifacts/experiments/pipeline/generated_experiment_pipeline.auto.yaml",

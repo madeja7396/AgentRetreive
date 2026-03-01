@@ -24,6 +24,10 @@
 - `scripts/dev/prepare_worktree.sh`
 - `scripts/benchmark/fit_symbol_language_weights.py`
 - `scripts/benchmark/generate_report.py`
+- `scripts/benchmark/complete_phase3.py`
+- `scripts/benchmark/analyze_toolcall_reduction.py`
+- `scripts/pipeline/run_cross_env_repro.py`
+- `scripts/dev/run_cross_env_repro.sh`
 
 ### Incubation（補助・分析）
 
@@ -43,6 +47,7 @@
 make validate
 make experiment-ready
 make experiment
+make phase3-complete RUN_ID=<run_id>
 make report
 ```
 

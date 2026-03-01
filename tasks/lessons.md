@@ -347,6 +347,72 @@
 
 ---
 
+### 2026-02-28: 再利用を前提にするなら「正本」と「配布テンプレート」を分離する
+
+**観測事実**:
+- 正本ディレクトリだけを整備しても、新規プロジェクトへ転用する時に必要資産の抽出で手戻りが発生する
+- 契約資産（schema/policy/templates）と運用資産（runbook/governance）は同時に持ち出せないと再現性が崩れる
+
+**教訓**:
+1. テンプレート運用では、正本（本体）と配布用バンドル（`TEMPLATE/`）を明示的に分離するべき
+2. 構成ガイド（project tree）を同梱しないテンプレートは、導入先で構造ドリフトを起こす
+3. テンプレート化後は docs index から導線を張らないと、存在しても使われない
+
+**対応**:
+- `TEMPLATE/` を新設し、`contracts/operations/workflows/configs` を集約
+- `TEMPLATE/README.md` と `TEMPLATE/PROJECT_STRUCTURE.md` を追加
+- `docs/README.md` と `ASSET_CLASSIFICATION.md` に TEMPLATE 導線を追加
+
+---
+
+### 2026-03-01: 実行記録は「出力JSONの実キー」を基準にマッピングする
+
+**観測事実**:
+- `final_summary.json` の `overall` キーは `avg_mrr/recall/found` 形式で、`average_mrr/recall_percentage/successful_tasks` ではない
+- run record 生成時に期待キーで読んだ結果、初回の `run_record.json` と `RUN_SUMMARY.md` が 0/None を記録した
+
+**教訓**:
+1. 記録スクリプトは「ドキュメント上の想定名」ではなく、実ファイルのキーを直接検証してから実装するべき
+2. run 成果物を作った直後に sanity check（主要指標が非ゼロか）を入れるべき
+
+**対応**:
+- run 記録生成を修正し、`avg_mrr/recall/found/total_tasks/avg_latency_ms` を正しく採取
+- `run_record.json` を schema 再検証し、`RUN_SUMMARY.md` を実測値へ更新
+
+---
+
+### 2026-03-01: 大規模コーパスの micro 計測はタイムアウト前提で設計する
+
+**観測事実**:
+- `ix build` の micro 計測で一部 repo が I/O wait (`D`) に入り、無制限待機だと実験全体が停止した
+- タイムアウト導入後は「失敗を記録して継続」でき、Phase3 全体を完了できた
+
+**教訓**:
+1. ベンチハーネスは「完走性」を優先し、重いステップには必ず timeout を付けるべき
+2. timeout 時は欠測として落とさず、明示フラグ付きで結果を残すべき
+
+**対応**:
+- `scripts/benchmark/complete_phase3.py` に build/update/比較実験の timeout を追加
+- micro 出力へ `timed_out` フラグを追加し、後段集計を継続可能にした
+
+---
+
+### 2026-03-01: cross-env 再現は「品質」と「速度」で許容誤差を分ける
+
+**観測事実**:
+- Python 3.12 と 3.11 で recall/mrr は一致した一方、平均レイテンシは約25%差が出た
+- 単一の固定閾値（例: ±10%）だと、品質は再現していても速度だけで不合格になった
+
+**教訓**:
+1. 再現判定は品質指標（recall/mrr）と速度指標（latency）で別閾値を持つべき
+2. runtime差を含む cross-env 比較では latency の相対閾値を明示しないと判定が不安定になる
+
+**対応**:
+- cross-env レポートに quality ±0.01（absolute）/ latency ±30%（relative）を採用
+- `run_cross_env_repro.py` と `run_cross_env_repro.sh` を追加して判定を自動化
+
+---
+
 ## 全般的な原則
 
 1. **「シンプルさ」はパフォーマンスの敵ではない**:

@@ -8,6 +8,7 @@
 ```bash
 python3 --version
 pytest --version
+python3.11 --version
 ```
 2. 品質ゲート:
 ```bash
@@ -53,6 +54,19 @@ python3 scripts/pipeline/run_experiment_route.py --no-balance --skip-clone --wor
 make report
 ```
 4. `tasks/todo.md` に実行記録を追記
+
+## Cross-Env 再現
+
+Python 3.11 で主要実験の再現判定:
+
+```bash
+scripts/dev/run_cross_env_repro.sh run_20260228_154238_exp001_raw
+```
+
+依存固定:
+
+- `requirements-lock.txt`
+- `Dockerfile.repro`
 
 ## 障害対応（一次）
 

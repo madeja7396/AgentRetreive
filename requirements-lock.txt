@@ -1,0 +1,9 @@
+# Reproducible Python dependency lock for AgentRetrieve experiment pipeline
+PyYAML==6.0.1
+attrs==23.2.0
+iniconfig==1.1.1
+jsonschema==4.10.3
+packaging==24.0
+pluggy==1.4.0
+pyrsistent==0.20.0
+pytest==7.4.4

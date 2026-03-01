@@ -80,6 +80,12 @@ make experiment-ready
 
 - `scripts/README.md` - scripts分類台帳（標準導線/補助導線）
 
+## Template 配布
+
+- `TEMPLATE/README.md` - テンプレートバンドル利用ガイド
+- `TEMPLATE/PROJECT_STRUCTURE.md` - 新規プロジェクト用の推奨構成
+- `TEMPLATE/contracts/*` - schema/policy/task template の集約
+
 ## ルート資料（履歴）
 
 - `PROPOSED_METHOD_COMPLETE.md` - 提案内容の要約スナップショット
