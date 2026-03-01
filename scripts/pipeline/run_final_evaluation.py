@@ -5,12 +5,12 @@ import json
 import sys
 import time
 import re
+import os
 from pathlib import Path
 from dataclasses import dataclass
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'src'))
-from agentretrieve.index.inverted import InvertedIndex
-from agentretrieve.query.engine import QueryEngine
+from agentretrieve.backends import SUPPORTED_ENGINES, create_backend, resolve_backend_name
 
 
 @dataclass
@@ -21,12 +21,17 @@ class OptimalConfig:
     max_terms: int = 3
 
 
-def evaluate_repository(repo_id: str, index_path: Path, tasks: list, config: OptimalConfig) -> dict:
+def evaluate_repository(
+    repo_id: str,
+    index_path: Path,
+    tasks: list,
+    config: OptimalConfig,
+    engine_backend: str,
+) -> dict:
     """Evaluate a repository with given configuration."""
-    idx = InvertedIndex.load(index_path)
-    idx.k1 = config.k1
-    idx.b = config.b
-    engine = QueryEngine(idx)
+    backend = create_backend(engine_backend)
+    idx = backend.load_index(index_path)
+    backend.set_bm25(idx, k1=config.k1, b=config.b)
     
     results = []
     latencies = []
@@ -53,7 +58,8 @@ def evaluate_repository(repo_id: str, index_path: Path, tasks: list, config: Opt
             min_match = 0
         
         start = time.perf_counter()
-        ar_results = engine.search(
+        ar_results = backend.search(
+            idx,
             must=must_terms,
             should=should_terms,
             not_terms=[],
@@ -129,9 +135,16 @@ def evaluate_repository(repo_id: str, index_path: Path, tasks: list, config: Opt
 
 def main():
     import argparse
+    default_engine = resolve_backend_name(os.environ.get("AR_ENGINE"))
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--config', default='configs/experiment_pipeline.yaml')
     parser.add_argument('-o', '--output', default='artifacts/experiments/pipeline')
+    parser.add_argument(
+        '--engine',
+        choices=list(SUPPORTED_ENGINES),
+        default=default_engine,
+        help='Retrieval backend engine',
+    )
     args = parser.parse_args()
     
     # Load configuration
@@ -149,6 +162,7 @@ def main():
     print('='*80)
     print('FINAL EVALUATION - ALL REPOSITORIES')
     print('='*80)
+    print(f"Engine: {args.engine}")
     print(f"Configuration: k1={optimal.k1}, b={optimal.b}, "
           f"min_match={optimal.min_match_ratio}, max_terms={optimal.max_terms}")
     
@@ -171,7 +185,13 @@ def main():
         
         print(f"\n{repo_id:12s}: ", end='', flush=True)
         
-        result = evaluate_repository(repo_id, index_path, repo_tasks, optimal)
+        result = evaluate_repository(
+            repo_id=repo_id,
+            index_path=index_path,
+            tasks=repo_tasks,
+            config=optimal,
+            engine_backend=args.engine,
+        )
         all_results[repo_id] = result
         
         print(f"Recall={result['recall']:.1%} MRR={result['mrr']:.3f} "
@@ -204,6 +224,7 @@ def main():
     
     summary = {
         'timestamp': time.strftime('%Y-%m-%dT%H:%M:%S'),
+        'engine': args.engine,
         'config': {
             'k1': optimal.k1,
             'b': optimal.b,

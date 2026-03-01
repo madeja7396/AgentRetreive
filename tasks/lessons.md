@@ -594,8 +594,44 @@
 3. 既存成果物を fallback 参照するだけでなく、run単位ディレクトリへの配置を標準化するべき
 
 **対応**:
-- `tasks/todo.md` に Sprint 9（run_record導線修復）を追加
-- 次実装で `run_experiment_route.py` の run_dir 自動作成と成果物移送を実装予定
+- `tasks/todo.md` に Sprint 9（run_record導線修復）を追加し、Program R1 へ接続
+- `run_experiment_route.py` で run_dir 自動作成・成果物移送・`--create-run-dir` 伝播を実装
+- `generate_run_record.py` で run_dir 自動作成と summary fallback 探索順を実装
+- `tests/unit/test_generate_run_record.py` を追加し、再発防止テストを常設
+
+---
+
+### 2026-03-01: backend切替を導入するときは cache key と検証を engine-aware にする
+
+**観測事実**:
+- `--engine`（`py`/`rust`）を導入すると、同一repo・同一tasksetでも探索結果キャッシュが混線する可能性がある
+- CLI・pipeline・route の一部だけ engine 対応すると、実験導線の一貫性が崩れる
+
+**教訓**:
+1. backend切替を導入する場合、キャッシュキーに engine を含めるべき
+2. engine パラメータは CLI・pipeline・route を同時に更新し、片系統だけの対応を避けるべき
+3. 新しい抽象化層は即座に回帰テストを追加し、導線の退行を防ぐべき
+
+**対応**:
+- `run_full_pipeline.py` の search cache key に `engine_backend` を追加
+- `run_experiment_route.py` / `run_corpus_auto_adapt.py` / `run_final_evaluation.py` へ `--engine` を伝播
+- `tests/unit/test_backends.py` を追加し、factory 解決と fallback を検証
+
+---
+
+### 2026-03-01: todo の完了判定はレビュー本文とチェックボックスを同時更新する
+
+**観測事実**:
+- Sprint 29/32/34/35/36 はレビュー本文が `Done` でも、DoD のチェックボックスに `- [ ]` が残っていた
+- 進捗可視化が崩れ、次アクション選定のノイズになった
+
+**教訓**:
+1. レビューを `Done` に更新するターンで、同じ章の DoD チェックを必ず同期すべき
+2. 長期計画（Program R1）では `x` / `~` / ` ` の意味を固定し、状態遷移を明示すべき
+
+**対応**:
+- `tasks/todo.md` の過去章チェック漏れを是正し、完了済みDoDを `- [x]` に統一
+- Program R1 の未完了項目は `- [~]` へ明示的に状態化し、検証済み項目のみ `- [x]` に更新
 
 ---
 

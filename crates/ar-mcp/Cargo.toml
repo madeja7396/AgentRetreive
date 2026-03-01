@@ -1,0 +1,10 @@
+[package]
+name = "ar-mcp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow = "1.0"
+ar-core = { path = "../ar-core" }
+serde_json = "1.0"

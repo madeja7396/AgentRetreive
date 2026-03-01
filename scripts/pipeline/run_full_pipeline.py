@@ -9,6 +9,7 @@ from dataclasses import asdict, dataclass
 import hashlib
 import itertools
 import json
+import os
 from pathlib import Path
 import re
 import sys
@@ -19,8 +20,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
-from agentretrieve.index.inverted import InvertedIndex
-from agentretrieve.query.engine import QueryEngine
+from agentretrieve.backends import SUPPORTED_ENGINES, create_backend, resolve_backend_name
 
 
 FAST_GRID = {
@@ -90,15 +90,14 @@ def _build_configs(grid: dict[str, list[Any]]) -> list[ExperimentConfig]:
 
 def evaluate_single_config(args: tuple) -> dict[str, Any]:
     """Evaluate a single configuration (standalone for multiprocessing)."""
-    config_dict, repo_id, index_path_str, tasks = args
+    config_dict, repo_id, index_path_str, tasks, engine_backend = args
     config = ExperimentConfig(**config_dict)
     index_path = Path(index_path_str)
 
     try:
-        idx = InvertedIndex.load(index_path)
-        idx.k1 = config.k1
-        idx.b = config.b
-        engine = QueryEngine(idx)
+        backend = create_backend(engine_backend)
+        idx = backend.load_index(index_path)
+        backend.set_bm25(idx, k1=config.k1, b=config.b)
 
         results = []
         for task in tasks:
@@ -120,7 +119,8 @@ def evaluate_single_config(args: tuple) -> dict[str, Any]:
                 min_match = 0
 
             start = time.perf_counter()
-            ar_results = engine.search(
+            ar_results = backend.search(
+                idx,
                 must=must_terms,
                 should=should_terms,
                 not_terms=[],
@@ -204,10 +204,13 @@ def run_parameter_search(
     tasks: list[dict[str, Any]],
     configs: list[ExperimentConfig],
     weights: dict[str, float],
+    engine_backend: str,
     num_workers: int = 4,
 ) -> tuple[dict[str, Any] | None, float, dict[str, Any] | None, list[dict[str, Any]]]:
     """Run parameter search for a single repository."""
-    args_list = [(asdict(cfg), repo_id, str(index_path), tasks) for cfg in configs]
+    args_list = [
+        (asdict(cfg), repo_id, str(index_path), tasks, engine_backend) for cfg in configs
+    ]
 
     if num_workers <= 1:
         results = _run_search_sequential(args_list)
@@ -242,6 +245,7 @@ def _cache_key(
     repo_id: str,
     index_path: Path,
     taskset_path: Path,
+    engine_backend: str,
     grid_profile: str,
     grid: dict[str, list[Any]],
     weights: dict[str, Any],
@@ -252,6 +256,7 @@ def _cache_key(
         "repo": repo_id,
         "index_sha256": _sha256_file(index_path),
         "taskset_sha256": _sha256_file(taskset_path),
+        "engine_backend": engine_backend,
         "grid_profile": grid_profile,
         "grid": grid,
         "weights": weights,
@@ -275,11 +280,18 @@ def _save_cache(path: Path, payload: dict[str, Any]) -> None:
 
 
 def main() -> int:
+    default_engine = resolve_backend_name(os.environ.get("AR_ENGINE"))
     parser = argparse.ArgumentParser(description="Run full experiment pipeline")
     parser.add_argument("-c", "--config", default="configs/experiment_pipeline.yaml")
     parser.add_argument("-o", "--output", default="artifacts/experiments/pipeline")
     parser.add_argument("-w", "--workers", type=int, default=4)
     parser.add_argument("--repos", type=str, default="", help="Comma-separated repo list")
+    parser.add_argument(
+        "--engine",
+        choices=list(SUPPORTED_ENGINES),
+        default=default_engine,
+        help="Retrieval backend engine",
+    )
     parser.add_argument(
         "--grid-profile",
         choices=["full", "fast", "extended"],
@@ -327,6 +339,7 @@ def main() -> int:
     print("=" * 80)
     print(f"Output: {output_dir}")
     print(f"Workers: {args.workers}")
+    print(f"Engine: {args.engine}")
     print(f"Grid profile: {args.grid_profile}")
     if search_cache_dir:
         print(f"Search cache dir: {search_cache_dir} (enabled={use_cache})")
@@ -371,6 +384,7 @@ def main() -> int:
             repo_id=repo_id,
             index_path=index_path,
             taskset_path=taskset_path,
+            engine_backend=args.engine,
             grid_profile=args.grid_profile,
             grid=grid,
             weights=param_config["optimization"]["weights"],
@@ -395,6 +409,7 @@ def main() -> int:
                 repo_tasks,
                 configs,
                 param_config["optimization"]["weights"],
+                args.engine,
                 args.workers,
             )
             elapsed = time.perf_counter() - start_time
@@ -431,6 +446,7 @@ def main() -> int:
                     {
                         "repo": repo_id,
                         "total_configs": len(configs),
+                        "engine": args.engine,
                         "grid_profile": args.grid_profile,
                         "cache_hit": cache_hit,
                         "optimal": {"config": optimal_config, "score": score, "result": opt_result},
@@ -444,6 +460,7 @@ def main() -> int:
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "configuration": {
             "parameter_search": config["parameter_search"],
+            "engine": args.engine,
             "grid_profile": args.grid_profile,
             "effective_grid": grid,
         },

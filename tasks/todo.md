@@ -1664,9 +1664,9 @@
 
 ### 29.1 目標（この章のDoD）
 
-- [ ] `run_experiment_route.py` 経由で run_record 生成を失敗なく完走させる
-- [ ] `runs/{run_id}` 不在時も自動で実験成果物を格納できる
-- [ ] Sprint 8 実験結果の KPI差分を `docs/SSOT.md` 反映候補として整理する
+- [x] `run_experiment_route.py` 経由で run_record 生成を失敗なく完走させる
+- [x] `runs/{run_id}` 不在時も自動で実験成果物を格納できる
+- [x] Sprint 8 実験結果の KPI差分を `docs/SSOT.md` 反映候補として整理する
 
 ### 29.2 実装タスク（優先順）
 
@@ -1819,9 +1819,9 @@
 
 ### 32.1 目標（この章のDoD）
 
-- [ ] 論文用の図表（8種類）を最新実験結果で再生成
-- [ ] 図表の整合性検証（validate_figure_integrity --strict）
-- [ ] 最終リリースチェック（make release-ready）
+- [x] 論文用の図表（8種類）を最新実験結果で再生成
+- [x] 図表の整合性検証（validate_figure_integrity --strict）
+- [x] 最終リリースチェック（make release-ready）
 
 ### 32.2 実装タスク
 
@@ -1928,9 +1928,9 @@
 
 ### 34.1 目標（この章のDoD）
 
-- [ ] 全Sprint（8-13）の実験結果を統合して論文用にまとめる
-- [ ] 主要貢献（KPI達成、多言語対応、スケーラビリティ）を明確化
-- [ ] 今後の課題と研究方向を文書化
+- [x] 全Sprint（8-13）の実験結果を統合して論文用にまとめる
+- [x] 主要貢献（KPI達成、多言語対応、スケーラビリティ）を明確化
+- [x] 今後の課題と研究方向を文書化
 
 ### 34.2 実装タスク
 
@@ -1983,9 +1983,9 @@
 
 ### 35.1 目標（この章のDoD）
 
-- [ ] Baseline v1.1（74.3% recall）を上回るパラメータ設定を探索
-- [ ] k1, b, min_match_ratio, max_termsの最適組み合わせを特定
-- [ ] 新たな最適パラメータでrun_recordを生成
+- [x] Baseline v1.1（74.3% recall）を上回るパラメータ設定を探索（探索完了、上回り未達を確認）
+- [x] k1, b, min_match_ratio, max_termsの最適組み合わせを特定（現行最適を確定）
+- [x] 新たな最適パラメータでrun_recordを生成（現行最適で生成）
 
 ### 35.2 実装タスク
 
@@ -2038,9 +2038,9 @@
 
 ### 36.1 目標（この章のDoD）
 
-- [ ] 全Sprint（8-15）の成果を最終統合
-- [ ] リリースドキュメントを完成させる
-- [ ] プロジェクトを完了状態にする
+- [x] 全Sprint（8-15）の成果を最終統合
+- [x] リリースドキュメントを完成させる
+- [x] プロジェクトを完了状態にする
 
 ### 36.2 実装タスク
 
@@ -2101,53 +2101,53 @@
 
 ### 37.1 方針固定（引き継ぐ思想）
 
-- [ ] Capability-based Retrieval（`doc_id`/`span_id` 系の秘匿参照）を維持
-- [ ] 構造化 DSL（`must/should/not/near/symbol`）を維持し v2へ拡張
-- [ ] budget 制御付き mini-json を維持し v3へ拡張
-- [ ] 決定性（非埋め込み、再現可能スコアリング）を維持
+- [x] Capability-based Retrieval（`doc_id`/`span_id` 系の秘匿参照）を維持
+- [~] 構造化 DSL（`must/should/not/near/symbol`）を維持し v2へ拡張
+- [~] budget 制御付き mini-json を維持し v3へ拡張
+- [x] 決定性（非埋め込み、再現可能スコアリング）を維持
 
 ### 37.2 改築スコープ（変える実装基盤）
 
-- [ ] コア検索基盤を Python から Rust へ移行（性能ボトルネック解消）
-- [ ] symbol 抽出を regex/AST fallback から tree-sitter 中心へ移行
-- [ ] index 永続化を JSON から mmap 対応バイナリへ移行
-- [ ] インターフェースを CLI 単体から CLI + MCP + Library API へ拡張
+- [~] コア検索基盤を Python から Rust へ移行（性能ボトルネック解消）
+- [x] symbol 抽出を regex/AST fallback から tree-sitter 中心へ移行
+- [~] index 永続化を JSON から mmap 対応バイナリへ移行
+- [x] インターフェースを CLI 単体から CLI + MCP + Library API へ拡張
 
 ### 37.3 フェーズ計画（report 準拠）
 
 #### Phase 1: Core Engine
 
-- [ ] Rust workspace 雛形作成（`crates/ar-core`, `crates/ar-cli`, `crates/ar-mcp`）
-- [ ] Tokenizer + FST index 実装
-- [ ] BM25 scorer + postings 実装
-- [ ] tree-sitter symbol extraction 実装
-- [ ] `ar ix build` / `ar q` の Rust CLI 最小版実装
+- [x] Rust workspace 雛形作成（`crates/ar-core`, `crates/ar-cli`, `crates/ar-mcp`）
+- [x] Tokenizer + FST index 実装
+- [x] BM25 scorer + postings 実装
+- [x] tree-sitter symbol extraction 実装
+- [x] `ar ix build` / `ar q` の Rust CLI 最小版実装
 
 #### Phase 2: Capability & Output
 
-- [ ] Handle manager + proof 連携
-- [ ] Budget enforcer 実装
-- [ ] 出力 `result.v3` formatter 実装
-- [ ] PyO3 bindings（Python 互換レイヤ）実装
+- [~] Handle manager + proof 連携
+- [~] Budget enforcer 実装
+- [x] 出力 `result.v3` formatter 実装
+- [~] PyO3 bindings（Python 互換レイヤ）実装
 
 #### Phase 3: Integration
 
-- [ ] MCP Server 実装（`ar.search`, `ar.read_span`, `ar.expand`, `ar.index_status`, `ar.callers`）
-- [ ] ベンチマーク再設計（L1 Keyword / L2 Symbol / L3 Compositional）
-- [ ] 論文用実験導線を v2 に接続
+- [x] MCP Server 実装（`ar.search`, `ar.read_span`, `ar.expand`, `ar.index_status`, `ar.callers`）
+- [~] ベンチマーク再設計（L1 Keyword / L2 Symbol / L3 Compositional）
+- [~] 論文用実験導線を v2 に接続
 
 #### Phase 4: Polish
 
-- [ ] 差分更新（WAL / compaction）実装
-- [ ] パフォーマンスチューニング（p95, cold start, large repo）
-- [ ] 運用文書・移行ガイド・論文反映を完了
+- [~] 差分更新（WAL / compaction）実装
+- [~] パフォーマンスチューニング（p95, cold start, large repo）
+- [~] 運用文書・移行ガイド・論文反映を完了
 
 ### 37.4 成果物契約（DoD）
 
-- [ ] 大規模 repo 検索性能の改善を実測で確認（現行比）
-- [ ] `result.v3` schema と互換ポリシー（v1/v2/v3）を文書化
-- [ ] MCP 経由の 1 tool-call 検索導線を実動確認
-- [ ] 既存品質ゲート（contracts/tests/template-sync）を緑化維持
+- [~] 大規模 repo 検索性能の改善を実測で確認（現行比）
+- [~] `result.v3` schema と互換ポリシー（v1/v2/v3）を文書化
+- [x] MCP 経由の 1 tool-call 検索導線を実動確認
+- [x] 既存品質ゲート（contracts/tests/template-sync）を緑化維持
 
 ### 37.5 レビュー（計画登録時点）
 
@@ -2161,15 +2161,68 @@
 ### 37.6 ブランチ運用・マージフロー
 
 - [x] 作業ブランチ作成: `feat/program-r1-redesign`（from `main`）
-- [ ] Program R1 の DoD（37.4）を全て満たす
-- [ ] 品質ゲートを通過:
+- [~] Program R1 の DoD（37.4）を全て満たす
+- [x] 品質ゲートを通過:
   - `python3 scripts/ci/validate_contracts.py`
   - `pytest -q`
   - `python3 scripts/dev/sync_template_bundle.py --check`
-- [ ] `main` 最新を取り込み、競合解消後に再検証
-- [ ] PR作成（変更概要・検証ログ・ロールバック方針を記載）
-- [ ] 承認後 `main` へマージ（squash/rebase はPR方針に従う）
+- [~] `main` 最新を取り込み、競合解消後に再検証
+- [~] PR作成（変更概要・検証ログ・ロールバック方針を記載）
+- [~] 承認後 `main` へマージ（squash/rebase はPR方針に従う）
 
 マージ判定ルール:
 - DoD未達、または品質ゲート未通過の場合はマージ禁止
 - run_record/SSOT/レポート更新が必要な変更は、成果物更新を同一PRに含める
+
+### 37.7 実装レビュー（Sprint R1-1: M0/M1 + Rust workspace bootstrap, 2026-03-01）
+
+- 実施内容:
+  - `src/agentretrieve/backends/` を新設し、`py/rust` 切替可能な backend 抽象を導入
+  - CLI (`ar`) と pipeline (`run_full_pipeline.py`, `run_final_evaluation.py`, `run_experiment_route.py`, `run_corpus_auto_adapt.py`) に `--engine` / `AR_ENGINE` 導線を追加
+  - run_record 導線を修復:
+    - `run_experiment_route.py` で `runs/{run_id}` 自動作成 + 成果物コピー強化
+    - `generate_run_record.py` に `--create-run-dir` と summary fallback 探索順を追加
+  - Rust workspace 雛形を追加:
+    - `Cargo.toml` workspace
+    - `crates/ar-core`, `crates/ar-cli`, `crates/ar-mcp`（最小ビルド可能）
+  - 回帰防止テストを追加:
+    - `tests/unit/test_backends.py`
+    - `tests/unit/test_generate_run_record.py`
+- 検証:
+  - `python3 scripts/ci/validate_contracts.py` PASS
+  - `pytest -q` PASS（全34件）
+  - `python3 scripts/dev/sync_template_bundle.py --check` PASS
+  - `cargo check --workspace` PASS
+- スタッフエンジニア観点:
+  - Program R1 の本丸（Rust移行）前に、Python資産を維持したまま差し替え境界を確立できた
+  - run_record失敗の再発防止を、導線修正 + テストで担保できた
+  - 次段は `ar-core` の tokenizer/FST/postings 実装を優先し、`RustBackend` を fail-fast から実動へ移行する
+- 判定: `In Progress`（Phase 1 雛形完了、コア検索実装へ進行可能）
+
+### 37.8 実装レビュー（Sprint R1-2: Rust Core Phase 1 実装, 2026-03-01）
+
+- 実施内容:
+  - `ar-core` に Tokenizer/BM25/Postings/FST index を実装
+    - `crates/ar-core/src/tokenizer.rs`
+    - `crates/ar-core/src/bm25.rs`
+    - `crates/ar-core/src/index.rs`
+  - tree-sitter 中心の symbol 抽出を実装（Pythonはtree-sitter、他言語はfallback）
+    - `crates/ar-core/src/symbol.rs`
+  - Rust CLI 最小版 `ar ix build` / `ar q` を実装
+    - `crates/ar-cli/src/main.rs`
+  - MCP server 最小版（`ar.search`, `ar.read_span`, `ar.expand`, `ar.index_status`, `ar.callers`）を実装
+    - `crates/ar-mcp/src/main.rs`
+- 検証:
+  - `cargo check --workspace` PASS
+  - `cargo test -q --workspace` PASS
+  - `cargo run -q -p ar-cli -- ix build ...` PASS
+  - `cargo run -q -p ar-cli -- q ...` PASS
+  - `printf '{...ar.search...}' | cargo run -q -p ar-mcp` で JSON-RPC 応答 PASS
+  - `pytest -q` PASS（全34件）
+  - `python3 scripts/ci/validate_contracts.py` PASS
+  - `python3 scripts/dev/sync_template_bundle.py --check` PASS
+- スタッフエンジニア観点:
+  - Program R1 Phase 1 の実装骨格（検索コア + CLI + MCP）を動作確認付きで確立
+  - Python導線を壊さず、Rust側を独立進化させる基盤を作れた
+  - 次段は Rust backend 実配線（PyO3/FFI）と `result.v3` 契約固定が最優先
+- 判定: `In Progress`（Phase 1 主要項目は完了、Phase 2 へ進行可能）

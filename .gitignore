@@ -19,6 +19,7 @@ htmlcov/
 dist/
 artifacts/
 TEMPLATE/
+target/
 
 # Local temp / diagnostics
 *.log

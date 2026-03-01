@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import shutil
 import shlex
 import subprocess
 from datetime import datetime
@@ -96,6 +97,12 @@ def main() -> int:
         help="Profile definition YAML path.",
     )
     parser.add_argument("--repos", default="", help="Comma-separated repository IDs")
+    parser.add_argument(
+        "--engine",
+        choices=["py", "rust"],
+        default=None,
+        help="Retrieval backend engine",
+    )
     parser.add_argument(
         "--workers",
         type=int,
@@ -237,6 +244,8 @@ def main() -> int:
         args.state_file = str(profile_settings.get("state_file", ""))
     if not args.search_cache_dir:
         args.search_cache_dir = str(profile_settings.get("search_cache_dir", ""))
+    if not args.engine:
+        args.engine = str(profile_settings.get("engine_backend", "py"))
 
     runs_root = str(profile_settings.get("runs_root", "artifacts/experiments/runs"))
     registry_root = str(profile_settings.get("registry_root", "artifacts/experiments"))
@@ -252,6 +261,7 @@ def main() -> int:
     print(f"generated_config: {generated_config}")
     print(f"repos: {args.repos or '(taskset default)'}")
     print(f"index_all: {args.index_all}")
+    print(f"engine: {args.engine}")
     print(f"no_balance: {args.no_balance}")
     print(f"grid_profile: {args.grid_profile}")
     if args.state_file:
@@ -282,6 +292,8 @@ def main() -> int:
             args.generated_config,
             "--grid-profile",
             args.grid_profile,
+            "--engine",
+            args.engine,
         ]
         if args.repos:
             auto_cmd.extend(["--repos", args.repos])
@@ -363,6 +375,8 @@ def main() -> int:
                 final_eval_config,
                 "-o",
                 args.output_dir,
+                "--engine",
+                args.engine,
             ],
             cwd=root,
             dry_run=args.dry_run,
@@ -385,16 +399,17 @@ def main() -> int:
             print(f"[run_dir created: {run_dir}]")
             # Copy essential artifacts to run_dir
             artifacts_to_copy = [
-                (output_path / "final_summary.json", "summary.json"),
+                (output_path / "final_summary.json", "final_summary.json"),
                 (output_path / "aggregate_results.json", "aggregate_results.json"),
                 (output_path / "auto_adapt_summary.json", "auto_adapt_summary.json"),
+                (output_path / "gold_coverage_summary.json", "gold_coverage_summary.json"),
+                (output_path / "symbol_support_summary.json", "symbol_support_summary.json"),
             ]
             for src, dst_name in artifacts_to_copy:
                 if src.exists():
-                    import shutil
                     shutil.copy2(src, run_dir / dst_name)
                     print(f"  copied: {src.name} -> {dst_name}")
-        
+
         record_cmd = [
             "python3",
             "scripts/pipeline/generate_run_record.py",
@@ -406,6 +421,7 @@ def main() -> int:
             runs_root,
             "--registry-root",
             registry_root,
+            "--create-run-dir",
         ]
         if args.run_record_v2:
             record_cmd.append("--write-v2")

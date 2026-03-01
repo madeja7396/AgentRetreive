@@ -137,6 +137,11 @@ def main() -> int:
     parser.add_argument("--registry-root", default="artifacts/experiments")
     parser.add_argument("--notes", default="")
     parser.add_argument("--status", choices=["success", "partial", "failed"], default="")
+    parser.add_argument(
+        "--create-run-dir",
+        action="store_true",
+        help="Create run directory when missing",
+    )
     parser.add_argument("--write-v1", action="store_true", default=True)
     parser.add_argument("--write-v2", action="store_true", default=True)
     args = parser.parse_args()
@@ -144,11 +149,22 @@ def main() -> int:
     root = Path(__file__).resolve().parents[2]
     run_dir = (root / args.runs_root / args.run_id).resolve()
     if not run_dir.exists():
-        raise SystemExit(f"run directory not found: {run_dir}")
+        if args.create_run_dir:
+            run_dir.mkdir(parents=True, exist_ok=True)
+        else:
+            raise SystemExit(f"run directory not found: {run_dir}")
 
-    summary_path = run_dir / "final_summary.json"
-    if not summary_path.exists():
-        summary_path = (root / "artifacts/experiments/pipeline/final_summary.json").resolve()
+    config_path = (root / args.config_path).resolve()
+    output_dir_from_config = config_path.parent
+    summary_candidates = [
+        run_dir / "final_summary.json",
+        run_dir / "summary.json",  # backward compatibility
+        output_dir_from_config / "final_summary.json",
+        (root / "artifacts/experiments/pipeline/final_summary.json").resolve(),
+    ]
+    summary_path = next((p for p in summary_candidates if p.exists()), None)
+    if summary_path is None:
+        raise SystemExit("final_summary.json not found in run/output locations")
     summary = _load_json(summary_path)
     overall = summary.get("overall", {})
 
@@ -171,7 +187,6 @@ def main() -> int:
         end_utc = mtime.replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
     commit, dirty = _git_meta(root)
-    config_path = (root / args.config_path).resolve()
 
     metrics = {
         "mrr_at_10": float(overall.get("avg_mrr", 0.0)),

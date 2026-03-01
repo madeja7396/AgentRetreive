@@ -654,6 +654,10 @@ def _build_pipeline_config(
 
 
 def main() -> int:
+    default_engine = os.environ.get("AR_ENGINE", "py").strip().lower()
+    if default_engine not in {"py", "rust"}:
+        default_engine = "py"
+
     parser = argparse.ArgumentParser(
         description="Run corpus-added auto adaptation in one command.",
     )
@@ -692,6 +696,12 @@ def main() -> int:
         type=int,
         default=4,
         help="Worker count for parameter search pipeline",
+    )
+    parser.add_argument(
+        "--engine",
+        choices=["py", "rust"],
+        default=default_engine,
+        help="Retrieval backend engine for parameter search pipeline",
     )
     parser.add_argument(
         "--repos",
@@ -842,6 +852,7 @@ def main() -> int:
     print(f"Repos with tasks: {selected_with_tasks}")
     print(f"Generated config: {generated_config_path}")
     print(f"Missing major languages: {missing_major or 'none'}")
+    print(f"Engine: {args.engine}")
     print(f"Grid profile: {args.grid_profile}")
     print(f"State file: {state_path}")
     if search_cache_dir is not None:
@@ -1120,6 +1131,8 @@ def main() -> int:
             str(output_dir),
             "-w",
             str(args.workers),
+            "--engine",
+            args.engine,
             "--grid-profile",
             args.grid_profile,
         ]

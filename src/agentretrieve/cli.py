@@ -10,8 +10,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from .backends import SUPPORTED_ENGINES, create_backend, resolve_backend_name
 from .index.inverted import InvertedIndex
-from .query.engine import QueryEngine
 from .models.output import format_results
 
 _RE_DOC_ID = re.compile(r"^doc_([0-9a-f]+)$")
@@ -24,29 +24,9 @@ _DEFAULT_PATTERN = (
 )
 
 
-def _collect_files(root: Path, pattern_csv: str) -> list[Path]:
-    files: set[Path] = set()
-    patterns = [part.strip() for part in pattern_csv.split(",") if part.strip()]
-    for pattern in patterns:
-        for path in root.rglob(pattern):
-            if path.is_file():
-                files.add(path)
-    return sorted(files, key=lambda p: str(p.relative_to(root)))
-
-
-def _build_index(root: Path, pattern_csv: str) -> InvertedIndex:
-    idx = InvertedIndex()
-    idx.source_root = str(root.resolve())
-    files = _collect_files(root, pattern_csv)
-    for path in files:
-        try:
-            content = path.read_text(encoding="utf-8", errors="ignore")
-            rel_path = str(path.relative_to(root))
-            lang = _detect_lang(path.suffix)
-            idx.add_document(rel_path, content, lang)
-        except Exception as exc:
-            print(f"Warning: Failed to index {path}: {exc}", file=sys.stderr)
-    return idx
+def _backend_from_args(args: argparse.Namespace):
+    engine = resolve_backend_name(getattr(args, "engine", None))
+    return create_backend(engine)
 
 
 def _summarize_update(old_idx: InvertedIndex, new_idx: InvertedIndex) -> dict[str, Any]:
@@ -90,11 +70,12 @@ def cmd_index_build(args: argparse.Namespace) -> int:
         print(f"Error: Directory not found: {args.dir}", file=sys.stderr)
         return 1
 
-    idx = _build_index(root, args.pattern)
+    backend = _backend_from_args(args)
+    idx = backend.build_index(root, args.pattern)
 
     # Save index
     output_path = Path(args.output)
-    idx.save(output_path)
+    backend.save_index(idx, output_path)
     print(f"Index saved: {output_path}")
     print(f"Documents: {idx.total_docs}, Terms: {len(idx.index)}, Total tokens: {idx.total_terms}")
     
@@ -103,12 +84,13 @@ def cmd_index_build(args: argparse.Namespace) -> int:
 
 def cmd_index_update(args: argparse.Namespace) -> int:
     """Update existing index safely via deterministic rebuild + atomic replace."""
+    backend = _backend_from_args(args)
     index_path = Path(args.index)
     if not index_path.exists():
         print(f"Error: Index not found: {args.index}", file=sys.stderr)
         return 1
 
-    old_idx = InvertedIndex.load(index_path)
+    old_idx = backend.load_index(index_path)
     source_root = args.dir or old_idx.source_root
     if not source_root:
         print(
@@ -122,12 +104,12 @@ def cmd_index_update(args: argparse.Namespace) -> int:
         return 2
 
     output_path = Path(args.output) if args.output else index_path
-    rebuilt = _build_index(root, args.pattern)
+    rebuilt = backend.build_index(root, args.pattern)
     report = _summarize_update(old_idx, rebuilt)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = output_path.with_suffix(f"{output_path.suffix}.tmp")
-    rebuilt.save(tmp_path)
+    backend.save_index(rebuilt, tmp_path)
     tmp_path.replace(output_path)
 
     if args.report:
@@ -150,14 +132,14 @@ def cmd_index_update(args: argparse.Namespace) -> int:
 
 def cmd_query(args: argparse.Namespace) -> int:
     """Execute query."""
+    backend = _backend_from_args(args)
     # Load index
     index_path = Path(args.index)
     if not index_path.exists():
         print(f"Error: Index not found: {args.index}", file=sys.stderr)
         return 1
     
-    idx = InvertedIndex.load(index_path)
-    engine = QueryEngine(idx)
+    idx = backend.load_index(index_path)
     
     # Parse query
     if args.json:
@@ -203,12 +185,14 @@ def cmd_query(args: argparse.Namespace) -> int:
     
     # Execute search
     try:
-        page = engine.search_page(
+        page = backend.search_page(
+            idx,
             must=must,
             should=should,
             not_terms=not_terms,
             max_results=max_results,
             max_hits=max_hits,
+            min_match=0,
             near=near,
             lang=lang,
             ext=ext,
@@ -279,12 +263,13 @@ def _parse_span_id(handle: str) -> tuple[int, int, str | None] | None:
 
 def cmd_cap_verify(args: argparse.Namespace) -> int:
     """Verify capability handle validity against current index."""
+    backend = _backend_from_args(args)
     index_path = Path(args.index)
     if not index_path.exists():
         print(f"Error: Index not found: {args.index}", file=sys.stderr)
         return 1
 
-    idx = InvertedIndex.load(index_path)
+    idx = backend.load_index(index_path)
     doc_num = _parse_doc_id(args.doc_id)
     span = _parse_span_id(args.span_id)
     current_fingerprint = idx.corpus_fingerprint()
@@ -347,52 +332,16 @@ def cmd_cap_verify(args: argparse.Namespace) -> int:
     return 0
 
 
-def _detect_lang(ext: str) -> str | None:
-    """Detect language from file extension."""
-    lang_map = {
-        '.py': 'python',
-        '.pyi': 'python',
-        '.js': 'javascript',
-        '.jsx': 'javascript',
-        '.mjs': 'javascript',
-        '.cjs': 'javascript',
-        '.ts': 'typescript',
-        '.tsx': 'typescript',
-        '.mts': 'typescript',
-        '.cts': 'typescript',
-        '.rs': 'rust',
-        '.go': 'go',
-        '.cs': 'csharp',
-        '.php': 'php',
-        '.rb': 'ruby',
-        '.kt': 'kotlin',
-        '.kts': 'kotlin',
-        '.swift': 'swift',
-        '.dart': 'dart',
-        '.hs': 'haskell',
-        '.lhs': 'haskell',
-        '.ex': 'elixir',
-        '.exs': 'elixir',
-        '.c': 'c',
-        '.cpp': 'cpp',
-        '.cc': 'cpp',
-        '.cxx': 'cpp',
-        '.h': 'c',
-        '.hpp': 'cpp',
-        '.java': 'java',
-        '.md': 'markdown',
-        '.json': 'json',
-        '.yaml': 'yaml',
-        '.yml': 'yaml',
-        '.toml': 'toml',
-    }
-    return lang_map.get(ext.lower())
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(
         prog='ar',
         description='AgentRetrieve - Agent-native code search',
+    )
+    parser.add_argument(
+        "--engine",
+        choices=list(SUPPORTED_ENGINES),
+        default=None,
+        help="Retrieval backend (default: AR_ENGINE or py).",
     )
     subparsers = parser.add_subparsers(dest='command', required=True)
     
