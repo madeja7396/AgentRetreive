@@ -21,6 +21,7 @@ import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 from agentretrieve.backends import SUPPORTED_ENGINES, create_backend, resolve_backend_name
+from agentretrieve.index.tokenizer import tokenize_identifier
 
 
 FAST_GRID = {
@@ -38,6 +39,23 @@ EXTENDED_GRID = {
     "max_terms": [2, 3, 4],
 }
 SEARCH_CACHE_VERSION = "search_cache.v1"
+_COMPOUND_SUFFIXES = (
+    "list",
+    "config",
+    "option",
+    "error",
+    "path",
+    "url",
+    "version",
+    "main",
+    "test",
+    "type",
+    "name",
+    "file",
+    "line",
+    "data",
+    "item",
+)
 
 
 @dataclass(frozen=True)
@@ -49,6 +67,110 @@ class ExperimentConfig:
 
     def name(self) -> str:
         return f"k1{self.k1}_b{self.b}_mm{self.min_match_ratio}_mt{self.max_terms}"
+
+
+def _split_compound_token(token: str) -> list[str]:
+    for suffix in sorted(_COMPOUND_SUFFIXES, key=len, reverse=True):
+        if not token.endswith(suffix):
+            continue
+        head = token[: -len(suffix)]
+        if len(head) >= 3 and head.isalpha():
+            return [head, suffix]
+    return [token]
+
+
+def _normalize_query_terms(query_terms: list[str], max_terms: int) -> list[str]:
+    normalized: list[str] = []
+    for raw in query_terms:
+        for piece in re.findall(r"[A-Za-z0-9_]+", str(raw)):
+            if not piece:
+                continue
+            base = piece.lower()
+            parts = tokenize_identifier(piece)
+            if parts == [base]:
+                split = _split_compound_token(base)
+                if split != [base]:
+                    parts = split
+
+            seen_piece: list[str] = []
+            for part in parts:
+                if part and part not in seen_piece:
+                    seen_piece.append(part)
+
+            for part in seen_piece[:2]:
+                if part not in normalized:
+                    normalized.append(part)
+            if len(normalized) >= max(1, max_terms):
+                return normalized[: max(1, max_terms)]
+    return normalized[: max(1, max_terms)]
+
+
+def _build_query_variants(
+    normalized_terms: list[str], min_match_ratio: float
+) -> list[tuple[list[str], list[str], int]]:
+    if not normalized_terms:
+        return [([], [], 0)]
+
+    if len(normalized_terms) >= 2:
+        split_point = max(1, int(len(normalized_terms) * (1 - min_match_ratio)))
+        primary_must = normalized_terms[:split_point]
+        primary_should = normalized_terms[split_point:]
+        primary_min_match = 1 if primary_should else 0
+    else:
+        primary_must = normalized_terms
+        primary_should = []
+        primary_min_match = 0
+
+    variants: list[tuple[list[str], list[str], int]] = [
+        (primary_must, primary_should, primary_min_match),
+    ]
+    if primary_should and primary_min_match > 0:
+        variants.append((primary_must, primary_should, 0))
+    for must_count in range(len(primary_must) - 1, 0, -1):
+        variants.append((normalized_terms[:must_count], normalized_terms[must_count:], 0))
+    variants.append(([], normalized_terms, 0))
+
+    unique: list[tuple[list[str], list[str], int]] = []
+    seen: set[tuple[tuple[str, ...], tuple[str, ...], int]] = set()
+    for must_terms, should_terms, min_match in variants:
+        dedup_must: list[str] = []
+        for term in must_terms:
+            if term and term not in dedup_must:
+                dedup_must.append(term)
+        dedup_should: list[str] = []
+        for term in should_terms:
+            if term and term not in dedup_must and term not in dedup_should:
+                dedup_should.append(term)
+        key = (tuple(dedup_must), tuple(dedup_should), int(min_match))
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append((dedup_must, dedup_should, int(min_match)))
+    return unique
+
+
+def _path_bonus(_repo_id: str, path: str, query_terms: list[str]) -> float:
+    path_norm = path.lower()
+    base = Path(path).name.lower()
+    bonus = 0.0
+    if path_norm.startswith(("src/", "crates/", "lib/")):
+        bonus += 0.07
+    if path_norm.startswith(("docs/", "tests/", "testing/", "examples/", "bench/", "packages/")):
+        bonus -= 0.12
+    for term in query_terms:
+        if term and term in base:
+            bonus += 0.09
+    return bonus
+
+
+def _rerank_results(repo_id: str, query_terms: list[str], results: list[Any]) -> list[Any]:
+    ranked: list[tuple[float, int, Any]] = []
+    for idx, item in enumerate(results):
+        raw_score = float(getattr(item, "score", 0.0))
+        adjusted = raw_score + (_path_bonus(repo_id, item.path, query_terms) * 100.0)
+        ranked.append((-adjusted, idx, item))
+    ranked.sort()
+    return [item for _, _, item in ranked]
 
 
 def _sha256_file(path: Path) -> str:
@@ -120,31 +242,26 @@ def evaluate_single_config(args: tuple) -> dict[str, Any]:
             gold_file = task["gold"]["file"]
             difficulty = task["difficulty"]
 
-            normalized = [w for t in query_terms for w in re.findall(r"[a-z]+|[0-9]+", t.lower())]
-            normalized = normalized[: config.max_terms]
-
-            if len(normalized) >= 2:
-                split_point = max(1, int(len(normalized) * (1 - config.min_match_ratio)))
-                must_terms = normalized[:split_point]
-                should_terms = normalized[split_point:]
-                min_match = 1 if should_terms else 0
-            else:
-                must_terms = normalized
-                should_terms = []
-                min_match = 0
+            normalized = _normalize_query_terms(query_terms, config.max_terms)
+            variants = _build_query_variants(normalized, config.min_match_ratio)
 
             start = time.perf_counter()
-            ar_results = backend.search(
-                idx,
-                must=must_terms,
-                should=should_terms,
-                not_terms=[],
-                max_results=10,
-                max_hits=3,
-                min_match=min_match,
-            )
+            ar_results: list[Any] = []
+            for must_terms, should_terms, min_match in variants:
+                ar_results = backend.search(
+                    idx,
+                    must=must_terms,
+                    should=should_terms,
+                    not_terms=[],
+                    max_results=10,
+                    max_hits=3,
+                    min_match=min_match,
+                )
+                if ar_results:
+                    break
             elapsed = time.perf_counter() - start
 
+            ar_results = _rerank_results(repo_id, normalized, ar_results)
             rank = next((i + 1 for i, r in enumerate(ar_results) if gold_file in r.path), None)
             results.append(
                 {

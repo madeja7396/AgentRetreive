@@ -139,10 +139,9 @@ def _build_query_variants(
     return unique
 
 
-def _path_bonus(repo_id: str, path: str, query_terms: list[str]) -> float:
+def _path_bonus(_repo_id: str, path: str, query_terms: list[str]) -> float:
     path_norm = path.lower()
     base = Path(path).name.lower()
-    term_set = set(query_terms)
 
     bonus = 0.0
     if path_norm.startswith(("src/", "crates/", "lib/")):
@@ -155,49 +154,6 @@ def _path_bonus(repo_id: str, path: str, query_terms: list[str]) -> float:
     for term in query_terms:
         if term and term in base:
             bonus += 0.09
-
-    if repo_id == "curl":
-        if path_norm.startswith("src/tool_"):
-            bonus += 0.20
-        if path_norm.startswith("lib/"):
-            bonus -= 0.04
-        if {"main", "curl"} <= term_set:
-            if path_norm == "src/tool_main.c":
-                bonus += 2.50
-            if path_norm.startswith(("m4/", "cmake/")):
-                bonus -= 0.90
-            if "config" in base:
-                bonus -= 0.70
-    if repo_id == "fmt":
-        if path_norm.startswith("include/fmt/"):
-            bonus += 0.55
-        if path_norm.startswith("test/"):
-            bonus -= 0.35
-        if path_norm.startswith("doc/"):
-            bonus -= 0.18
-        if base in {"readme.md", "changelog.md", "changelog-old.md"}:
-            bonus -= 0.25
-        if "format" in term_set and path_norm == "include/fmt/format.h":
-            bonus += 0.90
-        if "base" in term_set and path_norm == "include/fmt/base.h":
-            bonus += 0.90
-        if "printf" in term_set and path_norm == "include/fmt/printf.h":
-            bonus += 0.90
-        if "ranges" in term_set and path_norm == "include/fmt/ranges.h":
-            bonus += 0.90
-        if "compile" in term_set and path_norm == "include/fmt/compile.h":
-            bonus += 0.90
-    if repo_id == "pytest" and path_norm.startswith("src/_pytest/"):
-        bonus += 0.18
-    if repo_id == "pytest" and path_norm.endswith("/main.py") and {"pytest", "main"} <= term_set:
-        bonus += 1.20
-    if repo_id == "ripgrep" and "/complete/bash.rs" in path_norm and {"bash", "completion"} <= term_set:
-        bonus += 1.00
-    if repo_id == "cli":
-        if base.endswith("_test.go"):
-            bonus -= 0.35
-        if path_norm == "api/http_client.go" and {"http", "error"} <= term_set:
-            bonus += 1.00
 
     return bonus
 
@@ -259,23 +215,18 @@ def _path_fallback_candidates(
     limit: int = 30,
 ) -> list[PathCandidate]:
     scored: list[tuple[float, str]] = []
-    first_term = query_terms[0] if query_terms else ""
     for rel_path, tokens in source_rows:
         path_score = _score_path_match(query_terms, tokens)
         if path_score <= 0.0:
             continue
         adjusted = path_score + (_path_bonus(repo_id, rel_path, query_terms) * 10.0)
-        base_name = Path(rel_path).name.lower()
-        if repo_id == "curl" and first_term and first_term in {"url", "version", "config"}:
-            if f"tool_{first_term}" in base_name:
-                adjusted += 2.0
         if adjusted <= 0.0:
             continue
         scored.append((adjusted, rel_path))
 
     scored.sort(key=lambda item: (-item[0], item[1]))
     candidates: list[PathCandidate] = []
-    score_scale = 100.0 if repo_id == "curl" else 10.0
+    score_scale = 10.0
     for score, rel_path in scored[:limit]:
         candidates.append(PathCandidate(path=rel_path, score=int(score * score_scale)))
     return candidates

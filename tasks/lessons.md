@@ -740,3 +740,20 @@
   - `fmt`: `include/fmt/*` 強ブースト、`test/`, `doc/`, `README/ChangeLog` の抑制
 - 部分評価（`--repos curl,fmt`）で先に確認後、全7repo評価を実施
 - SOTA cycle v5 で `Recall 100.0% (35/35)`, `MRR 0.755`, `backlog pending 0` を達成
+
+---
+
+### 2026-03-03: ベンチ改善で repo/task 固有分岐を入れない
+
+**観測事実**:
+- `run_final_evaluation.py` に `repo_id == ...` と個別ファイル名直指定の補正を入れると、評価値は上がっても一般化保証が弱くなる
+- 同種の補正が `run_full_pipeline.py` 側にも波及し、運用導線の公平性を損なう
+
+**教訓**:
+1. 評価・本番導線では repo/task 固有ルール（特定repo名、特定ファイル名）を禁止する
+2. 改善は tokenizer、match条件、汎用rerankなどデータ非依存の規則に限定する
+3. ルール追加時は `rg \"repo_id ==|特定ファイル名\"` で静的チェックしてからマージする
+
+**対応**:
+- `run_final_evaluation.py` から repo/task 固有の `_path_bonus` / fallback 分岐を削除
+- `run_full_pipeline.py` から repo 固有 `_path_bonus` 分岐を削除
