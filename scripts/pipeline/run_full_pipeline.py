@@ -31,6 +31,39 @@ FAST_GRID = {
     "max_terms": [2, 3],
 }
 
+_CODE_EXTENSIONS = {
+    ".c",
+    ".cc",
+    ".cpp",
+    ".cxx",
+    ".h",
+    ".hpp",
+    ".hh",
+    ".go",
+    ".rs",
+    ".py",
+    ".java",
+    ".kt",
+    ".swift",
+    ".js",
+    ".ts",
+}
+
+_NON_CODE_EXTENSIONS = {
+    ".md",
+    ".rst",
+    ".txt",
+    ".json",
+    ".yaml",
+    ".yml",
+    ".toml",
+    ".ini",
+    ".cfg",
+    ".cmake",
+    ".m4",
+    ".in",
+}
+
 # Extended grid for parameter optimization (Sprint 15)
 EXTENDED_GRID = {
     "k1": [0.5, 0.8, 1.0, 1.2, 1.5, 2.0],
@@ -57,6 +90,20 @@ _COMPOUND_SUFFIXES = (
     "item",
 )
 
+_COMPOUND_PREFIXES = (
+    "https",
+    "http",
+    "json",
+    "yaml",
+    "url",
+    "api",
+    "xml",
+    "tls",
+    "ssl",
+    "tcp",
+    "udp",
+)
+
 
 @dataclass(frozen=True)
 class ExperimentConfig:
@@ -76,6 +123,12 @@ def _split_compound_token(token: str) -> list[str]:
         head = token[: -len(suffix)]
         if len(head) >= 3 and head.isalpha():
             return [head, suffix]
+    for prefix in _COMPOUND_PREFIXES:
+        if not token.startswith(prefix):
+            continue
+        tail = token[len(prefix) :]
+        if len(tail) >= 3 and tail.isalpha():
+            return [prefix, tail]
     return [token]
 
 
@@ -152,14 +205,64 @@ def _build_query_variants(
 def _path_bonus(_repo_id: str, path: str, query_terms: list[str]) -> float:
     path_norm = path.lower()
     base = Path(path).name.lower()
+    stem = Path(path).stem.lower()
+    ext = Path(path).suffix.lower()
+    tokens = set(re.split(r"[\\/._\\-]", path_norm))
+    tokens.discard("")
     bonus = 0.0
-    if path_norm.startswith(("src/", "crates/", "lib/")):
-        bonus += 0.07
-    if path_norm.startswith(("docs/", "tests/", "testing/", "examples/", "bench/", "packages/")):
-        bonus -= 0.12
+    if path_norm.startswith(("src/", "crates/", "lib/", "include/", "pkg/", "api/")):
+        bonus += 0.12
+    if path_norm.startswith("api/"):
+        bonus += 0.14
+    if path_norm.startswith(
+        (
+            "doc/",
+            "docs/",
+            "test/",
+            "tests/",
+            "testing/",
+            "examples/",
+            "bench/",
+            "benchmark/",
+            "m4/",
+            "cmake/",
+            ".github/",
+        )
+    ):
+        bonus -= 0.18
+    if (
+        "_test." in base
+        or base.startswith("test_")
+        or "-test." in base
+        or ".test." in base
+    ):
+        bonus -= 0.25
+    if ext in _CODE_EXTENSIONS:
+        bonus += 0.15
+    if ext in _NON_CODE_EXTENSIONS:
+        bonus -= 0.35
     for term in query_terms:
-        if term and term in base:
+        if not term:
+            continue
+        if term in base:
             bonus += 0.09
+        if term == stem:
+            bonus += 0.22
+        if term in tokens:
+            bonus += 0.06
+        elif any(term in tok or tok in term for tok in tokens):
+            bonus += 0.03
+    if len(query_terms) >= 3:
+        if len(stem) >= 10:
+            bonus += 0.12
+        elif len(stem) <= 4:
+            bonus -= 0.08
+        if "_" in stem or "-" in stem:
+            bonus += 0.05
+        stem_parts = [part for part in re.split(r"[_\\-]", stem) if part]
+        stem_match_count = sum(1 for term in query_terms if term in stem_parts or term == stem)
+        if stem_match_count <= 1 and len(stem_parts) == 1:
+            bonus -= 0.15
     return bonus
 
 

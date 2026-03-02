@@ -25,6 +25,8 @@
 - `SOTA-ALL`: 改善サイクルv3で `Recall 88.6% (31/35)`, `MRR 0.537` を確認（v2 `77.1% / 0.486` から改善）
 - `SOTA-ALL`: 改善サイクルv5で `Recall 100.0% (35/35)`, `MRR 0.755` を達成（v4_fix `97.1% / 0.623` から改善）
 - `SOTA-ALL`: 再現性ゲート 1/3 を通過（`sota_cycle_v6_repro1`: `35/35`, `MRR 0.755`, `pending=0`）
+- `SOTA-ALL`: 固有ルール排除後の汎用改善サイクルで `Recall 94.3% (33/35)`, `MRR 0.627` を確認（`/tmp/sota_cycle_generic_full1`）
+- `SOTA-ALL`: 残課題は `curl-med-01` と `cli-hard-01`（いずれも lexical hit 不足ケース）
 - `SOTA-LOOP`: 全コーパスSOTA到達まで改善ループを継続運用（Cycle運用章を追加）
 - Cycle実測（2026-03-02）: `fd` index build は `py=16.3s` → `rust=1.23s`（約13.3x高速化）
 - Cycle実測（2026-03-02）: `ripgrep` index build は `py=53.1s` → `rust=2.62s`（約20.3x高速化, 目標達成）
@@ -2523,6 +2525,7 @@
 - 検証:
   - `artifacts/experiments/sota_cycle_v5/final_summary.json` で `35/35`, `MRR 0.755`, `pending=0` を確認
   - `artifacts/experiments/sota_cycle_v6_repro1/final_summary.json` で再現性ゲート 1/3（`35/35`, `MRR 0.755`, `pending=0`）を確認
+  - `固有ルール排除` 後の再評価 `(/tmp/sota_cycle_generic_full1)` で `33/35`, `MRR 0.627`, `pending=2`（`curl/cli`）を確認
   - `PYTHONPATH=src pytest -q` PASS（37 passed）
   - `python3 scripts/ci/validate_contracts.py` PASS
 - 判定: `Go`（SOTA達成、再現性カウント運用へ）

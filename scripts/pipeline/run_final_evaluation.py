@@ -52,6 +52,53 @@ _COMPOUND_SUFFIXES = (
     "item",
 )
 
+_COMPOUND_PREFIXES = (
+    "https",
+    "http",
+    "json",
+    "yaml",
+    "url",
+    "api",
+    "xml",
+    "tls",
+    "ssl",
+    "tcp",
+    "udp",
+)
+
+_CODE_EXTENSIONS = {
+    ".c",
+    ".cc",
+    ".cpp",
+    ".cxx",
+    ".h",
+    ".hpp",
+    ".hh",
+    ".go",
+    ".rs",
+    ".py",
+    ".java",
+    ".kt",
+    ".swift",
+    ".js",
+    ".ts",
+}
+
+_NON_CODE_EXTENSIONS = {
+    ".md",
+    ".rst",
+    ".txt",
+    ".json",
+    ".yaml",
+    ".yml",
+    ".toml",
+    ".ini",
+    ".cfg",
+    ".cmake",
+    ".m4",
+    ".in",
+}
+
 
 def _split_compound_token(token: str) -> list[str]:
     for suffix in sorted(_COMPOUND_SUFFIXES, key=len, reverse=True):
@@ -60,6 +107,12 @@ def _split_compound_token(token: str) -> list[str]:
         head = token[: -len(suffix)]
         if len(head) >= 3 and head.isalpha():
             return [head, suffix]
+    for prefix in _COMPOUND_PREFIXES:
+        if not token.startswith(prefix):
+            continue
+        tail = token[len(prefix) :]
+        if len(tail) >= 3 and tail.isalpha():
+            return [prefix, tail]
     return [token]
 
 
@@ -142,18 +195,65 @@ def _build_query_variants(
 def _path_bonus(_repo_id: str, path: str, query_terms: list[str]) -> float:
     path_norm = path.lower()
     base = Path(path).name.lower()
+    stem = Path(path).stem.lower()
+    ext = Path(path).suffix.lower()
+    tokens = _path_tokens_from_relpath(path_norm)
 
     bonus = 0.0
-    if path_norm.startswith(("src/", "crates/", "lib/")):
-        bonus += 0.07
-    if path_norm.startswith(("docs/", "tests/", "testing/", "examples/", "bench/", "packages/")):
-        bonus -= 0.12
-    if "_test." in base or base.startswith("test_"):
+    if path_norm.startswith(("src/", "crates/", "lib/", "include/", "pkg/", "api/")):
+        bonus += 0.12
+    if path_norm.startswith("api/"):
+        bonus += 0.14
+    if path_norm.startswith(
+        (
+            "doc/",
+            "docs/",
+            "test/",
+            "tests/",
+            "testing/",
+            "examples/",
+            "bench/",
+            "benchmark/",
+            "m4/",
+            "cmake/",
+            ".github/",
+        )
+    ):
+        bonus -= 0.18
+    if (
+        "_test." in base
+        or base.startswith("test_")
+        or "-test." in base
+        or ".test." in base
+    ):
         bonus -= 0.25
+    if ext in _CODE_EXTENSIONS:
+        bonus += 0.15
+    if ext in _NON_CODE_EXTENSIONS:
+        bonus -= 0.35
 
     for term in query_terms:
-        if term and term in base:
+        if not term:
+            continue
+        if term in base:
             bonus += 0.09
+        if term == stem:
+            bonus += 0.22
+        if term in tokens:
+            bonus += 0.06
+        elif any(term in tok or tok in term for tok in tokens):
+            bonus += 0.03
+    if len(query_terms) >= 3:
+        if len(stem) >= 10:
+            bonus += 0.12
+        elif len(stem) <= 4:
+            bonus -= 0.08
+        if "_" in stem or "-" in stem:
+            bonus += 0.05
+        stem_parts = [part for part in re.split(r"[_\\-]", stem) if part]
+        stem_match_count = sum(1 for term in query_terms if term in stem_parts or term == stem)
+        if stem_match_count <= 1 and len(stem_parts) == 1:
+            bonus -= 0.15
 
     return bonus
 
@@ -185,12 +285,16 @@ def _path_tokens_from_relpath(rel_path: str) -> set[str]:
 
 def _collect_code_paths(source_root: Path) -> list[tuple[str, set[str]]]:
     rows: list[tuple[str, set[str]]] = []
+    skip_dirs = {".git", ".hg", ".svn", "target", "node_modules", ".venv", "artifacts"}
     if not source_root.exists():
         return rows
     for path in source_root.rglob("*"):
         if not path.is_file():
             continue
         rel = str(path.relative_to(source_root)).replace("\\", "/")
+        parts = set(rel.split("/"))
+        if parts & skip_dirs:
+            continue
         rows.append((rel, _path_tokens_from_relpath(rel)))
     return rows
 
@@ -226,7 +330,7 @@ def _path_fallback_candidates(
 
     scored.sort(key=lambda item: (-item[0], item[1]))
     candidates: list[PathCandidate] = []
-    score_scale = 10.0
+    score_scale = 20.0
     for score, rel_path in scored[:limit]:
         candidates.append(PathCandidate(path=rel_path, score=int(score * score_scale)))
     return candidates
@@ -302,7 +406,7 @@ def evaluate_repository(
         normalized = _normalize_query_terms(query_terms, config.max_terms)
         variants = _build_query_variants(normalized, config.min_match_ratio)
 
-        merged_by_path: dict[str, Any] = {}
+        merged_by_path: dict[str, PathCandidate] = {}
         selected_variant = "none"
         start = time.perf_counter()
         for variant_idx, (must_terms, should_terms, min_match) in enumerate(variants):
@@ -315,17 +419,29 @@ def evaluate_repository(
                 max_hits=3,
                 min_match=min_match,
             )
-            if ar_results:
+            if ar_results and selected_variant == "none":
                 selected_variant = f"variant_{variant_idx}"
+            # Relaxed variants are fallback paths; keep them, but down-weight to avoid
+            # overwhelming strict matches with broad lexical hits.
+            variant_penalty = float(variant_idx) * 60.0
             for item in ar_results:
+                candidate_score = float(getattr(item, "score", 0.0)) - variant_penalty
                 existing = merged_by_path.get(item.path)
-                if existing is None or float(getattr(item, "score", 0.0)) > float(
-                    getattr(existing, "score", 0.0)
-                ):
-                    merged_by_path[item.path] = item
+                if existing is None or candidate_score > float(getattr(existing, "score", 0.0)):
+                    merged_by_path[item.path] = PathCandidate(
+                        path=item.path,
+                        score=int(round(candidate_score)),
+                    )
+            if variant_idx >= 1 and len(merged_by_path) >= 120:
+                break
 
-        if source_rows:
-            for candidate in _path_fallback_candidates(repo_id, normalized, source_rows):
+        if source_rows and len(merged_by_path) <= 60:
+            for candidate in _path_fallback_candidates(
+                repo_id,
+                normalized,
+                source_rows,
+                limit=120,
+            ):
                 if candidate.path not in merged_by_path:
                     merged_by_path[candidate.path] = candidate
         elapsed = (time.perf_counter() - start) * 1000

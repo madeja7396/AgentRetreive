@@ -757,3 +757,22 @@
 **対応**:
 - `run_final_evaluation.py` から repo/task 固有の `_path_bonus` / fallback 分岐を削除
 - `run_full_pipeline.py` から repo 固有 `_path_bonus` 分岐を削除
+
+---
+
+### 2026-03-03: 固有ルールを除去した後は「緩和variantの重み」と「fallback注入条件」が支配的になる
+
+**観測事実**:
+- 固有ルール除去直後は `Recall 88.6%` まで低下したが、汎用改善（test/doc抑制、複合語分割、variant減衰）で `Recall 94.3%` まで回復した
+- `curl-med-01` と `cli-hard-01` は backend検索結果に gold が含まれにくく、fallback の設計が recall を左右した
+- fallback を強くしすぎると全体 MRR が崩れ、逆に弱すぎると no-hit を救済できない
+
+**教訓**:
+1. variant を全結合する場合は段階減衰（penalty）を必須にし、緩和結果の混入を制御する
+2. fallback は「常時強注入」ではなく、候補量とスコア設計を慎重に調整する
+3. 改善評価は「repo別短縮評価 -> 全コーパス評価」の順で副作用を監視する
+
+**対応**:
+- `run_final_evaluation.py` に variantごとの減衰統合を実装
+- `test/`・`doc/`・非コード拡張子への汎用ペナルティ、`include/pkg/api` への汎用ボーナスを導入
+- 複合語 prefix/suffix 分割（`urlglob` 等）を追加し、path fallback の語一致率を改善
