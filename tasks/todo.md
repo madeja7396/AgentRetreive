@@ -69,6 +69,46 @@
   - `ar t /tmp/does_not_exist_archive.a` -> `/usr/bin/ar: ... No such file or directory`（GNU fallback 経路確認）
 - 判定: `Go`（本環境で `ar` 実運用可能、skill 運用導線も整備済み）
 
+### Session Task: AR Launcher Runtime Re-Verification（2026-03-03）
+
+- [x] `cargo build --profile release-dist -p ar-cli` を実行し、`target/release-dist/ar` の更新を確認する
+- [x] `bash scripts/dev/install_ar_launcher.sh` を再実行し、`~/.local/bin/ar` launcher の導入状態を確認する
+- [x] `ar ix --help` / `ar q --help` / `ar --help` を実行し、AgentRetrieve 経路を確認する
+- [x] `AR_LAUNCHER_FORCE_GNU=1 ar --version` と `ar rcs ...` を実行し、GNU `ar` フォールバックを確認する
+
+#### Session Review（AR Launcher Runtime Re-Verification, 2026-03-03）
+
+- 実施内容:
+  - `cargo build --profile release-dist -p ar-cli` を実行し、`release-dist` バイナリのビルド完了を確認した（`Finished ... in 2.84s`）
+  - サンドボックス制約で通常実行では `~/.local/bin/ar` への書き込みが拒否されたため、昇格実行で `bash scripts/dev/install_ar_launcher.sh` を再実施し、導入を完了した
+  - AgentRetrieve 経路と GNU fallback 経路の双方をスモーク検証した
+- 検証:
+  - `command -v ar` -> `/root/.local/bin/ar`
+  - `ar ix --help` -> `Usage: ar ix <COMMAND>`
+  - `ar q --help` -> `Usage: ar q [OPTIONS] --index <INDEX>`
+  - `ar --help` -> `AgentRetrieve Rust CLI`
+  - `AR_LAUNCHER_FORCE_GNU=1 ar --version` -> `GNU ar (GNU Binutils for Ubuntu) 2.42`
+  - `gcc -c /tmp/ar_skill_smoke.c -o /tmp/ar_skill_smoke.o` + `ar rcs /tmp/ar_skill_smoke.a /tmp/ar_skill_smoke.o` + `ar t /tmp/ar_skill_smoke.a` -> `ar_skill_smoke.o`
+- 判定: `Go`（スキル記載の導入・共存・fallback 動作を再確認）
+
+### Session Task: AR Practicality Improvement Report（2026-03-03）
+
+- [x] `ar ix build` の実測（`src/docs/scripts`）を採取し、所要時間とメモリを記録する
+- [x] 全体 `ar ix build` の運用リスク（長時間化）を確認し、改善ポイントを抽出する
+- [x] 改善提案をレポート化し、優先度付きで整理する
+
+#### Session Review（AR Practicality Improvement Report, 2026-03-03）
+
+- 実施内容:
+  - `src/docs/scripts` で `ar ix build` を実測し、いずれも 1 秒未満で完了することを確認した
+  - ルート全体 `ar ix build` はこの環境で長時間化し、分割インデックス運用が現実的であることを再確認した
+  - 改善提案を `tasks/ar_runtime_improvement_report_2026-03-03.md` に整理した
+- 検証:
+  - `src`: `elapsed=0:00.40`, `maxrss_kb=7060`
+  - `docs`: `elapsed=0:00.39`, `maxrss_kb=6940`
+  - `scripts`: `elapsed=0:00.69`, `maxrss_kb=8804`
+- 判定: `Go`（改善ロードマップを運用可能な粒度で提示）
+
 ## 0. 目的と成功条件
 
 - [x] エージェントの 1 タスクあたり Tool Call 数を現行比較で削減できることを証明する
