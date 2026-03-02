@@ -1,6 +1,6 @@
 # Scripts Catalog
 
-更新日: 2026-03-01
+更新日: 2026-03-03
 
 ## 目的
 
@@ -22,6 +22,7 @@
 - `scripts/daemon/enqueue_task.py`
 - `scripts/daemon/run_agentd.sh`
 - `scripts/dev/prepare_worktree.sh`
+- `scripts/dev/install_ar_launcher.sh`
 - `scripts/benchmark/fit_symbol_language_weights.py`
 - `scripts/benchmark/generate_report.py`
 - `scripts/benchmark/complete_phase3.py`
@@ -30,6 +31,9 @@
 - `scripts/pipeline/generate_run_record.py`
 - `scripts/dev/run_cross_env_repro.sh`
 - `scripts/dev/sync_template_bundle.py`
+- `scripts/release/check_binary_size.sh`
+- `scripts/release/bench_cli_regression.py`
+- `scripts/release/package_cli_distribution.sh`
 
 ### Active（Pipeline サブコンポーネント）
 

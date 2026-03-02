@@ -13,3 +13,11 @@ license = "MIT"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
+
+[profile.release-dist]
+inherits = "release"
+opt-level = "z"
+lto = "fat"
+codegen-units = 1
+strip = "symbols"
+panic = "abort"

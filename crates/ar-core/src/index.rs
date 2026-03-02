@@ -243,6 +243,36 @@ impl InvertedIndex {
         &self.docs
     }
 
+    pub fn deterministic_fingerprint(&self) -> String {
+        let mut hasher = Sha256::new();
+        hasher.update(b"ar-core-index-v1");
+
+        for doc in &self.docs {
+            hasher.update(doc.id.to_le_bytes());
+            hasher.update(doc.path.as_bytes());
+            hasher.update([0]);
+            hasher.update(doc.length.to_le_bytes());
+            hasher.update(doc.line_count.to_le_bytes());
+            hasher.update(doc.content_hash.as_bytes());
+            hasher.update([0]);
+            if let Some(lang) = &doc.lang {
+                hasher.update(lang.as_bytes());
+            }
+            hasher.update([0]);
+        }
+
+        for (term, postings) in &self.postings {
+            hasher.update(term.as_bytes());
+            hasher.update([0]);
+            for posting in postings {
+                hasher.update(posting.doc_id.to_le_bytes());
+                hasher.update(posting.tf.to_le_bytes());
+            }
+        }
+
+        format!("{:x}", hasher.finalize())
+    }
+
     pub fn search(&self, query: &SearchQuery) -> Vec<SearchHit> {
         let must = normalize_terms(&query.must);
         let should = normalize_terms(&query.should);
@@ -504,5 +534,17 @@ mod tests {
         };
         let hits = idx.search(&query);
         assert!(!hits.is_empty());
+    }
+
+    #[test]
+    fn build_is_deterministic() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let root = temp.path();
+        fs::write(root.join("a.py"), "def alpha():\n    return 1\n").expect("write a");
+        fs::write(root.join("b.py"), "def beta():\n    return 2\n").expect("write b");
+
+        let idx1 = InvertedIndex::build_from_dir(root, DEFAULT_PATTERN_CSV).expect("build 1");
+        let idx2 = InvertedIndex::build_from_dir(root, DEFAULT_PATTERN_CSV).expect("build 2");
+        assert_eq!(idx1.deterministic_fingerprint(), idx2.deterministic_fingerprint());
     }
 }

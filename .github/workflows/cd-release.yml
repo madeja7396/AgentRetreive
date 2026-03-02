@@ -15,12 +15,28 @@ permissions:
   contents: write
 
 jobs:
-  package:
-    name: Build Release Artifact
-    runs-on: ubuntu-latest
+  build-cli:
+    name: Build CLI (${{ matrix.target_label }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target_label: linux-x86_64
+          - os: macos-14
+            target_label: macos-arm64
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
       - name: Resolve release label
         id: vars
@@ -35,27 +51,80 @@ jobs:
           fi
           echo "label=${label}" >> "$GITHUB_OUTPUT"
 
-      - name: Build archive
+      - name: Build CLI binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo build --release -p ar-cli
+          cargo build --profile release-dist -p ar-cli
+
+      - name: Check binary size
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/release/check_binary_size.sh \
+            --binary target/release-dist/ar \
+            --max-mb 3.5
+
+      - name: Check performance regression
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p dist
-          archive="dist/agentretrieve-${{ steps.vars.outputs.label }}.tar.gz"
-          tar -czf "$archive" \
-            AGENTS.md \
-            outline.md \
-            plan.md \
-            docs \
-            tasks
-          sha256sum "$archive" > dist/SHA256SUMS.txt
+          python3 scripts/release/bench_cli_regression.py \
+            --baseline-bin target/release/ar \
+            --candidate-bin target/release-dist/ar \
+            --allowed-regression-ratio 0.05 \
+            --output "dist/cli_perf_regression_${{ matrix.target_label }}.json"
 
-      - name: Upload artifact
+      - name: Package CLI archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/release/package_cli_distribution.sh \
+            --binary target/release-dist/ar \
+            --label "${{ steps.vars.outputs.label }}" \
+            --target "${{ matrix.target_label }}" \
+            --output-dir dist
+
+      - name: Upload target artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: agentretrieve-${{ steps.vars.outputs.label }}
+          name: cli-${{ matrix.target_label }}-${{ steps.vars.outputs.label }}
+          path: |
+            dist/*.tar.gz
+            dist/*.sha256
+            dist/cli_perf_regression_*.json
+
+  publish:
+    name: Publish Release Artifacts
+    needs: [build-cli]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download target artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: cli-*
+          merge-multiple: true
+          path: dist
+
+      - name: Generate combined checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f dist/SHA256SUMS.txt
+          for f in dist/*.tar.gz; do
+            sha256sum "$f" >> dist/SHA256SUMS.txt
+          done
+
+      - name: Upload combined artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: agentretrieve-cli-release-bundle
           path: |
             dist/*.tar.gz
             dist/SHA256SUMS.txt
+            dist/cli_perf_regression_*.json
 
       - name: Publish GitHub Release (tag push only)
         if: startsWith(github.ref, 'refs/tags/')

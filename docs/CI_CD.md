@@ -1,6 +1,6 @@
 # CI/CD Guide
 
-更新日: 2026-03-01
+更新日: 2026-03-03
 
 ## CI
 
@@ -37,14 +37,24 @@ Workflow: `.github/workflows/cd-release.yml`
   - `push` tag `v*`（例: `v0.1.0`）
   - manual (`workflow_dispatch`)
 - Job:
-  - release artifact を `dist/` に作成
+  - Rust CLI (`ar`) を `release` / `release-dist` でビルド
+  - サイズゲート（`<= 3.5MB`）と性能劣化ゲート（`<= 5%`）を実行
+  - `linux-x86_64` / `macos-arm64` の配布アーカイブを生成
   - GitHub Actions Artifact としてアップロード
   - tag push 時は GitHub Release に添付
 
 生成物:
 
-- `agentretrieve-<label>.tar.gz`
+- `agentretrieve-cli-<label>-linux-x86_64.tar.gz`
+- `agentretrieve-cli-<label>-macos-arm64.tar.gz`
 - `SHA256SUMS.txt`
+- `cli_perf_regression_<target>.json`
+
+ローカルで同等導線を実行:
+
+```bash
+make release-cli-ready LABEL=local TARGET=linux-x86_64
+```
 
 ## Release Ready ゲート
 
@@ -70,3 +80,4 @@ make release-ready RUN_ID=run_20260228_154238_exp001_raw
 - release は tag ベースで行う
 - 論文で参照する成果物は release artifact を正とする
 - 図表は **手編集禁止** - 必ず `make figures` で機械生成する
+- CLI配布の詳細手順は `docs/operations/CLI_DISTRIBUTION.md` を正とする

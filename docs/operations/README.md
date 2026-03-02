@@ -1,6 +1,6 @@
 # Operations Docs Index
 
-更新日: 2026-03-01
+更新日: 2026-03-03
 
 ## 目的
 
@@ -14,13 +14,15 @@
    行動原則と受け入れ基準
 3. `RUNBOOK.md`  
    日次/週次運用、KPI更新、障害一次対応
-4. `SKILLS_OPERATING_MODEL.md`  
+4. `CLI_DISTRIBUTION.md`  
+   CLI配布ゲート、配布物生成、チェックサム検証
+5. `SKILLS_OPERATING_MODEL.md`  
    skill階層化の運用モデル
-5. `ASSET_CLASSIFICATION.md`  
+6. `ASSET_CLASSIFICATION.md`  
    未統合ナレッジ/スクリプトの分類台帳（active/incubation/archive）
-6. `AGENTD.md`  
+7. `AGENTD.md`  
    デーモン実行の運用詳細
-7. `../../skills/CATALOG.yaml`  
+8. `../../skills/CATALOG.yaml`  
    skill owner（team/contact/escalation）台帳
 
 ## 実行前チェック

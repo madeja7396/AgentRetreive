@@ -25,7 +25,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 from agentretrieve.bench.corpus import Corpus, CorpusManager
-from agentretrieve.index.inverted import InvertedIndex
+from agentretrieve.backends import create_backend
 
 AUTO_ADAPT_STATE_VERSION = "auto_adapt_state.v1"
 
@@ -116,6 +116,12 @@ _SKIP_DIRS: set[str] = {
     "venv",
 }
 
+_DEFAULT_INDEX_PATTERN = (
+    "*.py,*.pyi,*.js,*.jsx,*.mjs,*.cjs,*.ts,*.tsx,*.mts,*.cts,*.rs,*.go,*.cs,*.php,"
+    "*.rb,*.kt,*.kts,*.swift,*.dart,*.hs,*.lhs,*.ex,*.exs,*.c,*.h,*.cpp,*.cc,*.cxx,"
+    "*.hpp,*.java,*.md"
+)
+
 
 @dataclass(frozen=True)
 class CodeFile:
@@ -160,39 +166,43 @@ def _select_corpora(
     return selected
 
 
-def _build_index(source_root: Path, index_path: Path) -> dict[str, int]:
-    idx = InvertedIndex()
-    idx.source_root = str(source_root.resolve())
-
+def _scan_file_stats(source_root: Path) -> tuple[int, int]:
     indexed_files = 0
     skipped_files = 0
-    read_errors = 0
     for root_dir, dirnames, filenames in os.walk(source_root):
         dirnames[:] = [d for d in dirnames if d not in _SKIP_DIRS]
         root_path = Path(root_dir)
         for filename in filenames:
             path = root_path / filename
-            lang = _SUFFIX_TO_LANG.get(path.suffix.lower())
-            if lang is None:
+            if _SUFFIX_TO_LANG.get(path.suffix.lower()) is None:
                 skipped_files += 1
                 continue
-            try:
-                content = path.read_text(encoding="utf-8", errors="ignore")
-            except Exception:
-                read_errors += 1
-                continue
-            rel_path = str(path.relative_to(source_root)).replace("\\", "/")
-            idx.add_document(rel_path, content, lang=lang)
             indexed_files += 1
+    return indexed_files, skipped_files
+
+
+def _build_index(source_root: Path, index_path: Path, engine_backend: str) -> dict[str, int]:
+    backend = create_backend(engine_backend)
+    idx = backend.build_index(source_root, _DEFAULT_INDEX_PATTERN)
 
     index_path.parent.mkdir(parents=True, exist_ok=True)
-    idx.save(index_path)
+    backend.save_index(idx, index_path)
+
+    indexed_files, skipped_files = _scan_file_stats(source_root)
+    rust_stats = getattr(idx, "_rust_stats", None)
+    if isinstance(rust_stats, dict):
+        docs = int(rust_stats.get("docs", 0))
+        terms = int(rust_stats.get("terms", 0))
+    else:
+        docs = int(getattr(idx, "total_docs", 0))
+        terms = int(len(getattr(idx, "index", {})))
+
     return {
         "indexed_files": indexed_files,
         "skipped_files": skipped_files,
-        "read_errors": read_errors,
-        "documents": idx.total_docs,
-        "terms": len(idx.index),
+        "read_errors": 0,
+        "documents": docs,
+        "terms": terms,
     }
 
 
@@ -995,7 +1005,7 @@ def main() -> int:
             )
 
             if should_rebuild_search:
-                stats = _build_index(source_dir, index_path)
+                stats = _build_index(source_dir, index_path, args.engine)
                 stats["reused"] = False
                 index_stats[repo_id] = stats
                 print(
@@ -1025,7 +1035,7 @@ def main() -> int:
             )
 
             if should_rebuild_raw:
-                raw_stats = _build_index(raw_source_dir, raw_index_path)
+                raw_stats = _build_index(raw_source_dir, raw_index_path, args.engine)
                 raw_stats["reused"] = False
                 raw_index_stats[repo_id] = raw_stats
                 print(

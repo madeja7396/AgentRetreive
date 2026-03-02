@@ -1,8 +1,8 @@
 {
   "version": "results.latest",
-  "updated_at": "2026-03-02T17:22:47Z",
-  "run_id": "sota_cycle_generic_full5_20260303",
-  "profile": "sota_cycle_generic_full5",
+  "updated_at": "2026-03-02T19:27:59Z",
+  "run_id": "sota_latency_cycle3_guard_20260303",
+  "profile": "sota_latency_cycle3_guard",
   "repositories": 7,
   "tasks": 35,
   "engine": "rust",
@@ -15,12 +15,12 @@
       "display": "100.0%"
     },
     "mrr": {
-      "value": 0.718413,
-      "display": "0.718"
+      "value": 0.82432,
+      "display": "0.824"
     },
     "avg_latency_ms": {
-      "value": 226.9,
-      "display": "226.9ms"
+      "value": 164.3,
+      "display": "164.3ms"
     }
   },
   "by_difficulty": {
@@ -34,6 +34,6 @@
     "error_handling": {"recall": 1.0, "found": 7, "total": 7},
     "usage_search": {"recall": 1.0, "found": 7, "total": 7}
   },
-  "status": "sota_cycle_generic_near_complete",
-  "note": "固有ルール排除後、overall 35/35 を回復。残課題は curl の MRR 0.489 (target 0.500) のみ。"
+  "status": "sota_latency_guarded_l3",
+  "note": "anti-false-opt strict guard（reference比較 + hard/usage recall下限）を有効化したまま recall=1.0 / backlog=0 を維持し、平均遅延を 164.3ms まで短縮。guard violations=0、full35基準のrg平均 849.1ms に対して速度優位を維持。"
 }

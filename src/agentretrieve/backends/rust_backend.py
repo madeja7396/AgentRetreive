@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Rust backend CLI bridge.
 
-This adapter invokes the Rust `ar-cli` binary for index operations and search.
+This adapter invokes the Rust `ar` CLI binary (with `ar-cli` compatibility)
+for index operations and search.
 """
 
 from __future__ import annotations
@@ -26,21 +27,31 @@ _DEFAULT_PATTERN = (
 
 
 def _ar_cli_path() -> str:
-    """Locate ar-cli binary."""
+    """Locate Rust CLI binary with backward-compatible fallbacks."""
+    if path := os.environ.get("AR_BIN_PATH"):
+        return path
     if path := os.environ.get("AR_CLI_PATH"):
         return path
 
     project_root = Path(__file__).resolve().parents[3]
-    release_cli = project_root / "target" / "release" / "ar-cli"
-    if release_cli.exists():
-        return str(release_cli)
+    local_candidates = [
+        project_root / "target" / "release" / "ar",
+        project_root / "target" / "release" / "ar-cli",
+        project_root / "target" / "debug" / "ar",
+        project_root / "target" / "debug" / "ar-cli",
+    ]
+    for candidate in local_candidates:
+        if candidate.exists():
+            return str(candidate)
 
-    debug_cli = project_root / "target" / "debug" / "ar-cli"
-    if debug_cli.exists():
-        return str(debug_cli)
+    for name in ("ar", "ar-cli"):
+        resolved = shutil.which(name)
+        if resolved:
+            return resolved
 
     raise RuntimeError(
-        "ar-cli binary not found. Set AR_CLI_PATH or build with: cargo build --release -p ar-cli"
+        "Rust CLI binary not found. Set AR_BIN_PATH (or legacy AR_CLI_PATH), or build with: "
+        "cargo build --release -p ar-cli"
     )
 
 
@@ -82,6 +93,7 @@ class RustBackend:
 
     def __init__(self) -> None:
         self._cli = _ar_cli_path()
+        self._supports_bm25_flags: bool | None = None
 
     def _run(self, args: list[str]) -> subprocess.CompletedProcess[str]:
         cmd = [self._cli] + args
@@ -298,6 +310,13 @@ class RustBackend:
             str(max_hits),
         ]
 
+        bm25_args = [
+            "--k1",
+            str(float(getattr(index, "k1", 0.8))),
+            "--b",
+            str(float(getattr(index, "b", 0.3))),
+        ]
+
         if must:
             args.extend(["--must", ",".join(must)])
         if should:
@@ -307,7 +326,26 @@ class RustBackend:
         if symbol:
             args.extend(["--symbol", ",".join(symbol)])
 
-        result = self._run_checked(args, op="rust search")
+        supports_bm25_flags = getattr(self, "_supports_bm25_flags", None)
+        cmd_args = list(args)
+        if supports_bm25_flags is not False:
+            cmd_args.extend(bm25_args)
+
+        try:
+            result = self._run_checked(cmd_args, op="rust search")
+            if supports_bm25_flags is None and cmd_args != args:
+                self._supports_bm25_flags = True
+        except RuntimeError as exc:
+            msg = str(exc)
+            if (
+                supports_bm25_flags is not False
+                and "--k1" in msg
+                and "unexpected argument" in msg
+            ):
+                self._supports_bm25_flags = False
+                result = self._run_checked(args, op="rust search")
+            else:
+                raise
 
         try:
             data = json.loads(result.stdout)

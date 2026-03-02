@@ -12,7 +12,7 @@ use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 
 #[derive(Parser, Debug)]
-#[command(name = "ar", about = "AgentRetrieve Rust CLI")]
+#[command(name = env!("CARGO_BIN_NAME"), about = "AgentRetrieve Rust CLI")]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -87,6 +87,10 @@ struct QueryArgs {
     max_bytes: usize,
     #[arg(long, default_value_t = 256)]
     max_excerpt: usize,
+    #[arg(long, default_value_t = 0.8)]
+    k1: f64,
+    #[arg(long, default_value_t = 0.3)]
+    b: f64,
 }
 
 #[derive(Debug, Deserialize, Default)]
@@ -132,6 +136,8 @@ struct QueryRuntimeConfig {
     max_hits: usize,
     max_bytes: usize,
     max_excerpt: usize,
+    k1: f64,
+    b: f64,
 }
 
 #[derive(Debug, Serialize)]
@@ -308,9 +314,11 @@ fn cmd_ix_update(args: IxUpdateArgs) -> Result<()> {
 }
 
 fn cmd_query(args: QueryArgs) -> Result<()> {
-    let idx = InvertedIndex::load(&args.index)
+    let mut idx = InvertedIndex::load(&args.index)
         .with_context(|| format!("failed to load index: {}", args.index.display()))?;
     let runtime = load_query_runtime(&args)?;
+    idx.k1 = runtime.k1;
+    idx.b = runtime.b;
 
     let query = SearchQuery {
         must: runtime.must.clone(),
@@ -367,6 +375,8 @@ fn load_query_runtime(args: &QueryArgs) -> Result<QueryRuntimeConfig> {
         max_hits: args.max_hits,
         max_bytes: args.max_bytes,
         max_excerpt: args.max_excerpt,
+        k1: args.k1,
+        b: args.b,
     };
 
     if let Some(json_path) = &args.json {
@@ -522,4 +532,46 @@ fn sha256_hex_file(path: &Path) -> Result<String> {
     let mut hasher = Sha256::new();
     hasher.update(bytes);
     Ok(format!("{:x}", hasher.finalize()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ix_update_matches_full_rebuild_fingerprint() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let source_dir = temp.path().join("src");
+        fs::create_dir_all(&source_dir).expect("create source");
+        fs::write(source_dir.join("a.rs"), "fn main() { println!(\"a\"); }\n").expect("write a");
+
+        let index_path = temp.path().join("repo.index.bin");
+        let initial = InvertedIndex::build_from_dir(&source_dir, DEFAULT_PATTERN_CSV).expect("build initial");
+        initial.save(&index_path).expect("save initial");
+
+        fs::write(
+            source_dir.join("a.rs"),
+            "fn main() { println!(\"b\"); }\nfn helper() { println!(\"x\"); }\n",
+        )
+        .expect("rewrite a");
+
+        let args = IxUpdateArgs {
+            index: index_path.clone(),
+            dir: source_dir.clone(),
+            output: None,
+            pattern: DEFAULT_PATTERN_CSV.to_string(),
+            wal: Some(temp.path().join("repo.index.wal")),
+            snapshot_dir: Some(temp.path().join("repo.index.snapshots")),
+            compact_threshold: 10_000,
+            compact_now: false,
+        };
+        cmd_ix_update(args).expect("ix update");
+
+        let updated = InvertedIndex::load(&index_path).expect("load updated");
+        let rebuilt = InvertedIndex::build_from_dir(&source_dir, DEFAULT_PATTERN_CSV).expect("build rebuilt");
+        assert_eq!(
+            updated.deterministic_fingerprint(),
+            rebuilt.deterministic_fingerprint()
+        );
+    }
 }

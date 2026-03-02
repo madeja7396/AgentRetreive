@@ -200,6 +200,93 @@ def main() -> int:
         help="Use final config as-is without forcing raw index/source paths",
     )
     parser.add_argument(
+        "--final-config-strategy",
+        choices=["fixed", "aggregate", "best-of-both"],
+        default="fixed",
+        help="Config strategy passed to run_final_evaluation.py",
+    )
+    parser.add_argument(
+        "--final-selection-policy",
+        choices=["quality-first", "latency-first-sota"],
+        default="quality-first",
+        help="Candidate selection policy passed to run_final_evaluation.py",
+    )
+    parser.add_argument(
+        "--final-aggregate-results",
+        default="",
+        help="Optional aggregate_results path passed to run_final_evaluation.py",
+    )
+    parser.add_argument(
+        "--target-recall",
+        type=float,
+        default=1.0,
+        help="SOTA target threshold for recall (run_final_evaluation)",
+    )
+    parser.add_argument(
+        "--target-mrr",
+        type=float,
+        default=0.5,
+        help="SOTA target threshold for MRR (run_final_evaluation)",
+    )
+    parser.add_argument(
+        "--max-results-per-variant",
+        type=int,
+        default=200,
+        help="Max candidate results retrieved per query variant (run_final_evaluation)",
+    )
+    parser.add_argument(
+        "--max-variants",
+        type=int,
+        default=8,
+        help="Max relaxed query variants evaluated per task (run_final_evaluation)",
+    )
+    parser.add_argument(
+        "--merge-stop-threshold",
+        type=int,
+        default=120,
+        help="Relaxed variant merge stop threshold (run_final_evaluation)",
+    )
+    parser.add_argument(
+        "--fallback-trigger-size",
+        type=int,
+        default=60,
+        help="Fallback injection trigger candidate count (run_final_evaluation)",
+    )
+    parser.add_argument(
+        "--fallback-limit",
+        type=int,
+        default=120,
+        help="Fallback injected candidate cap (run_final_evaluation)",
+    )
+    parser.add_argument(
+        "--guard-reference-summary",
+        default="",
+        help="Optional reference final_summary.json for anti-false-opt guard (run_final_evaluation)",
+    )
+    parser.add_argument(
+        "--guard-max-mrr-drop",
+        type=float,
+        default=0.08,
+        help="Maximum allowed avg_mrr drop vs reference summary (run_final_evaluation)",
+    )
+    parser.add_argument(
+        "--guard-require-hard-recall",
+        type=float,
+        default=1.0,
+        help="Minimum hard recall required by anti-false-opt guard (run_final_evaluation)",
+    )
+    parser.add_argument(
+        "--guard-require-usage-recall",
+        type=float,
+        default=1.0,
+        help="Minimum usage_search recall required by anti-false-opt guard (run_final_evaluation)",
+    )
+    parser.add_argument(
+        "--guard-strict",
+        action="store_true",
+        help="Fail route when anti-false-opt guard is violated (run_final_evaluation)",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Print route commands without execution",
@@ -266,6 +353,18 @@ def main() -> int:
     print(f"engine: {args.engine}")
     print(f"no_balance: {args.no_balance}")
     print(f"grid_profile: {args.grid_profile}")
+    print(f"final_config_strategy: {args.final_config_strategy}")
+    print(f"final_selection_policy: {args.final_selection_policy}")
+    if args.final_aggregate_results:
+        print(f"final_aggregate_results: {str((root / args.final_aggregate_results).resolve())}")
+    print(
+        "final_search_budget: "
+        f"max_variants={args.max_variants}, "
+        f"max_results={args.max_results_per_variant}, "
+        f"merge_stop={args.merge_stop_threshold}, "
+        f"fallback_trigger={args.fallback_trigger_size}, "
+        f"fallback_limit={args.fallback_limit}"
+    )
     if args.state_file:
         print(f"state_file: {str((root / args.state_file).resolve())}")
     if args.search_cache_dir:
@@ -348,7 +447,11 @@ def main() -> int:
             engine_backend=args.engine,
             dry_run=args.dry_run,
         )
-        final_eval_config = str(final_eval_config_path.relative_to(root)).replace("\\", "/")
+        try:
+            final_eval_config = str(final_eval_config_path.relative_to(root)).replace("\\", "/")
+        except ValueError:
+            # Allow absolute output directories outside repository root.
+            final_eval_config = str(final_eval_config_path).replace("\\", "/")
     else:
         final_eval_config = final_config
 
@@ -370,20 +473,47 @@ def main() -> int:
             print("[skip] gold-coverage")
 
     if not args.skip_final_eval:
-        _run(
-            [
-                "python3",
-                "scripts/pipeline/run_final_evaluation.py",
-                "-c",
-                final_eval_config,
-                "-o",
-                args.output_dir,
-                "--engine",
-                args.engine,
-            ],
-            cwd=root,
-            dry_run=args.dry_run,
-        )
+        final_eval_cmd = [
+            "python3",
+            "scripts/pipeline/run_final_evaluation.py",
+            "-c",
+            final_eval_config,
+            "-o",
+            args.output_dir,
+            "--engine",
+            args.engine,
+            "--config-strategy",
+            args.final_config_strategy,
+            "--selection-policy",
+            args.final_selection_policy,
+            "--target-recall",
+            str(args.target_recall),
+            "--target-mrr",
+            str(args.target_mrr),
+            "--max-results-per-variant",
+            str(args.max_results_per_variant),
+            "--max-variants",
+            str(args.max_variants),
+            "--merge-stop-threshold",
+            str(args.merge_stop_threshold),
+            "--fallback-trigger-size",
+            str(args.fallback_trigger_size),
+            "--fallback-limit",
+            str(args.fallback_limit),
+            "--guard-max-mrr-drop",
+            str(args.guard_max_mrr_drop),
+            "--guard-require-hard-recall",
+            str(args.guard_require_hard_recall),
+            "--guard-require-usage-recall",
+            str(args.guard_require_usage_recall),
+        ]
+        if args.final_aggregate_results:
+            final_eval_cmd.extend(["--aggregate-results", args.final_aggregate_results])
+        if args.guard_reference_summary:
+            final_eval_cmd.extend(["--guard-reference-summary", args.guard_reference_summary])
+        if args.guard_strict:
+            final_eval_cmd.append("--guard-strict")
+        _run(final_eval_cmd, cwd=root, dry_run=args.dry_run)
     else:
         print("[skip] final-eval")
 

@@ -1,6 +1,6 @@
 # AgentRetrieve Experiment Pipeline Makefile
 
-.PHONY: help pipeline test clean experiment-ready experiment experiment-fast experiment-all experiment-daily-full run-record repro-cross-env template-sync-check template-sync figures release-ready template-init template-smoke
+.PHONY: help pipeline test clean experiment-ready experiment experiment-fast experiment-all experiment-daily-full run-record repro-cross-env template-sync-check template-sync figures release-ready template-init template-smoke release-cli-build release-cli-check release-cli-package release-cli-ready
 
 help:
 	@echo "AgentRetrieve Experiment Pipeline"
@@ -25,6 +25,10 @@ help:
 	@echo "  make report      - Generate final report"
 	@echo "  make figures RUN_ID=<run_id> - Generate paper figure assets"
 	@echo "  make release-ready - Full release gate (validate + test + figures + template-sync-check + report)"
+	@echo "  make release-cli-build - Build Rust CLI binaries (release + release-dist)"
+	@echo "  make release-cli-check - Run CLI distribution gates (size + perf regression)"
+	@echo "  make release-cli-package LABEL=<label> TARGET=<target> - Package CLI archive into dist/"
+	@echo "  make release-cli-ready LABEL=<label> TARGET=<target> - Build + check + package in one command"
 
 pipeline:
 	@echo "Running full experiment pipeline..."
@@ -102,6 +106,33 @@ report:
 		--summary artifacts/experiments/pipeline/final_summary.json \
 		--aggregate artifacts/experiments/pipeline/aggregate_results.json \
 		--output artifacts/experiments/FINAL_PIPELINE_REPORT.md
+
+release-cli-build:
+	@echo "Building Rust CLI binaries (release + release-dist)..."
+	@cargo build --release -p ar-cli
+	@cargo build --profile release-dist -p ar-cli
+
+release-cli-check: release-cli-build
+	@echo "Running CLI size/performance gates..."
+	@bash scripts/release/check_binary_size.sh --binary target/release-dist/ar --max-mb 3.5
+	@python3 scripts/release/bench_cli_regression.py \
+		--baseline-bin target/release/ar \
+		--candidate-bin target/release-dist/ar \
+		--allowed-regression-ratio 0.05 \
+		--output dist/cli_perf_regression.json
+
+release-cli-package: release-cli-check
+	@echo "Packaging CLI distribution archive..."
+	$(eval RELEASE_LABEL := $(if $(LABEL),$(LABEL),local))
+	$(eval RELEASE_TARGET := $(if $(TARGET),$(TARGET),linux-x86_64))
+	@bash scripts/release/package_cli_distribution.sh \
+		--binary target/release-dist/ar \
+		--label "$(RELEASE_LABEL)" \
+		--target "$(RELEASE_TARGET)" \
+		--output-dir dist
+
+release-cli-ready: release-cli-package
+	@echo "CLI distribution artifact ready in dist/"
 
 figures:
 	@echo "Generating paper figure assets..."

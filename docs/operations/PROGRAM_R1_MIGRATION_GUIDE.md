@@ -6,10 +6,12 @@ This guide defines the controlled migration from Python retrieval runtime to Rus
 ## Runtime Modes
 - `AR_ENGINE=py`: legacy Python execution path.
 - `AR_ENGINE=rust`: Rust execution path (currently via Rust CLI/MCP surface).
+- `AR_BIN_PATH=/path/to/ar`: preferred Rust CLI override.
+- `AR_CLI_PATH=/path/to/ar-cli`: legacy override (backward-compatible).
 
 ## Rollout Steps
 1. Keep contracts green (`validate_contracts`, `pytest`, `template-sync`).
-2. Build Rust index with `ar ix build` and validate `ar q` output (`result.v3`).
+2. Build Rust index with `ar ix build` (or `ar-cli ix build`) and validate `ar q` output (`result.v3`).
 3. Validate MCP tool path (`ar.search` JSON-RPC roundtrip).
 4. Compare KPI/latency against Python baseline for target corpora.
 5. Promote Rust as default only after KPI non-regression gate passes.

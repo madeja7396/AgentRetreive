@@ -69,7 +69,28 @@ _TERM_EXPANSIONS: dict[str, tuple[str, ...]] = {
     "retry": ("backoff", "attempt"),
     "parse": ("parser", "glob", "token"),
     "completion": ("complete", "shell"),
+    "config": ("cfg",),
+    "auth": ("login", "credential", "token"),
 }
+
+_LOW_SIGNAL_PATH_SEGMENTS = (
+    "/mock/",
+    "/mocks/",
+    "/stub/",
+    "/stubs/",
+    "/fixtures/",
+    "/samples/",
+)
+
+_GENERATED_PATH_SEGMENTS = (
+    "/generated/",
+    "/gen/",
+    "/vendor/",
+    "/third_party/",
+    "/third-party/",
+)
+
+_PATH_BONUS_WEIGHT = 250.0
 
 # Extended grid for parameter optimization (Sprint 15)
 EXTENDED_GRID = {
@@ -222,6 +243,7 @@ def _expand_query_terms(query_terms: list[str], limit: int = 4) -> list[str]:
 
 def _path_bonus(_repo_id: str, path: str, query_terms: list[str]) -> float:
     path_norm = path.lower()
+    path_marked = f"/{path_norm}"
     base = Path(path).name.lower()
     stem = Path(path).stem.lower()
     ext = Path(path).suffix.lower()
@@ -229,17 +251,19 @@ def _path_bonus(_repo_id: str, path: str, query_terms: list[str]) -> float:
     tokens.discard("")
     bonus = 0.0
     if path_norm.startswith("src/"):
-        bonus += 0.18
+        bonus += 0.24
+    elif path_norm.startswith("internal/"):
+        bonus += 0.10
     elif path_norm.startswith("crates/"):
         bonus += 0.14
     elif path_norm.startswith("include/"):
-        bonus += 0.14
+        bonus += 0.10
     elif path_norm.startswith("pkg/"):
         bonus += 0.12
     elif path_norm.startswith("api/"):
         bonus += 0.12
     elif path_norm.startswith("lib/"):
-        bonus += 0.08
+        bonus += 0.02
     if path_norm.startswith("api/"):
         bonus += 0.14
     if path_norm.startswith(
@@ -265,6 +289,10 @@ def _path_bonus(_repo_id: str, path: str, query_terms: list[str]) -> float:
         or ".test." in base
     ):
         bonus -= 0.25
+    if any(segment in path_marked for segment in _LOW_SIGNAL_PATH_SEGMENTS):
+        bonus -= 0.22
+    if any(segment in path_marked for segment in _GENERATED_PATH_SEGMENTS):
+        bonus -= 0.12
     if ext in _CODE_EXTENSIONS:
         bonus += 0.15
     if ext in _NON_CODE_EXTENSIONS:
@@ -280,6 +308,29 @@ def _path_bonus(_repo_id: str, path: str, query_terms: list[str]) -> float:
             bonus += 0.06
         elif any(term in tok or tok in term for tok in tokens):
             bonus += 0.03
+
+    stem_parts = [part for part in re.split(r"[_\\-]", stem) if part]
+    stem_match_count = sum(1 for term in query_terms if term in stem_parts or term == stem)
+    if stem_match_count >= 2:
+        bonus += 0.12
+    elif stem_match_count == 1 and len(query_terms) <= 2:
+        bonus += 0.04
+
+    if "config" in query_terms:
+        if "cfg" in stem or "cfg" in tokens:
+            bonus += 0.14
+        if ext in {".h", ".hpp", ".hh"}:
+            bonus += 0.08
+    if "auth" in query_terms:
+        if any(term in stem for term in ("login", "credential", "token", "oauth")):
+            bonus += 0.10
+        if {"login", "credential", "token"} & tokens:
+            bonus += 0.06
+    if "main" in query_terms and (
+        stem == "main" or stem.startswith("main_") or stem.endswith("_main")
+    ):
+        bonus += 0.10
+
     if len(query_terms) >= 3:
         if len(stem) >= 10:
             bonus += 0.12
@@ -287,8 +338,6 @@ def _path_bonus(_repo_id: str, path: str, query_terms: list[str]) -> float:
             bonus -= 0.08
         if "_" in stem or "-" in stem:
             bonus += 0.05
-        stem_parts = [part for part in re.split(r"[_\\-]", stem) if part]
-        stem_match_count = sum(1 for term in query_terms if term in stem_parts or term == stem)
         if stem_match_count <= 1 and len(stem_parts) == 1:
             bonus -= 0.15
     return bonus
@@ -298,7 +347,7 @@ def _rerank_results(repo_id: str, query_terms: list[str], results: list[Any]) ->
     ranked: list[tuple[float, int, Any]] = []
     for idx, item in enumerate(results):
         raw_score = float(getattr(item, "score", 0.0))
-        adjusted = raw_score + (_path_bonus(repo_id, item.path, query_terms) * 100.0)
+        adjusted = raw_score + (_path_bonus(repo_id, item.path, query_terms) * _PATH_BONUS_WEIGHT)
         ranked.append((-adjusted, idx, item))
     ranked.sort()
     return [item for _, _, item in ranked]

@@ -67,6 +67,7 @@ make experiment-ready
 - `docs/operations/README.md` - 運用ドキュメントの参照順序
 - `docs/operations/MAINTENANCE_GOVERNANCE.md` - してよいこと/悪いこと、RACI、統治フロー
 - `docs/operations/RUNBOOK.md` - 日次/週次運用、KPI更新手順、障害一次対応
+- `docs/operations/CLI_DISTRIBUTION.md` - CLI配布手順（ビルド/サイズ/性能/検証）
 - `docs/operations/SIER_SOUL.md` - 行動原則（属人化排除の基準）
 - `docs/operations/SKILLS_OPERATING_MODEL.md` - skill階層運用モデル
 - `docs/operations/ASSET_CLASSIFICATION.md` - 資産分類台帳（active/incubation/archive）

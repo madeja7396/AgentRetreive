@@ -40,12 +40,20 @@ class TestBackendFactory(TestCase):
         self.assertIsInstance(backend, RustBackend)
 
     def test_rust_backend_cli_available(self) -> None:
-        """Verify ar-cli binary is detected."""
+        """Verify Rust CLI binary is detected."""
         backend = create_backend("rust")
         self.assertTrue(hasattr(backend, '_cli'))
         self.assertIsInstance(backend._cli, str)
-        # Verify the path looks like ar-cli
-        self.assertIn("ar-cli", backend._cli)
+        self.assertIn(Path(backend._cli).name, {"ar", "ar-cli"})
+
+    def test_rust_backend_ar_bin_path_takes_precedence(self) -> None:
+        with patch.dict(
+            os.environ,
+            {"AR_BIN_PATH": "/tmp/custom-ar", "AR_CLI_PATH": "/tmp/legacy-ar-cli"},
+            clear=True,
+        ):
+            backend = create_backend("rust")
+            self.assertEqual(backend._cli, "/tmp/custom-ar")
 
     def test_rust_backend_search_page_parses_result_v3(self) -> None:
         backend = RustBackend.__new__(RustBackend)
@@ -53,6 +61,8 @@ class TestBackendFactory(TestCase):
 
         idx = InvertedIndex(documents={}, index={})
         idx._rust_index_path = Path("/tmp/sample.index.bin")  # type: ignore[attr-defined]
+        idx.k1 = 1.7
+        idx.b = 0.55
 
         payload = {
             "v": "result.v3",
@@ -103,6 +113,11 @@ class TestBackendFactory(TestCase):
         self.assertEqual(result.doc_id_str, "doc_5")
         self.assertEqual(result.span_id, "span_5_1")
         mocked.assert_called_once()
+        called_args = mocked.call_args.args[0]
+        self.assertIn("--k1", called_args)
+        self.assertIn("--b", called_args)
+        self.assertIn("1.7", called_args)
+        self.assertIn("0.55", called_args)
 
     def test_rust_backend_search_page_cursor_not_supported(self) -> None:
         backend = RustBackend.__new__(RustBackend)

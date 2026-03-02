@@ -14,6 +14,28 @@ dependencies = []
 [project.scripts]
 ar = "agentretrieve.cli:main"
 
+[tool.hatch.build]
+exclude = [
+  "/.git",
+  "/.venv",
+  "/.venv-ci",
+  "/artifacts",
+  "/dist",
+  "/target",
+  "/TEMPLATE",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agentretrieve"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/src/agentretrieve",
+  "/pyproject.toml",
+  "/README.md",
+  "/LICENSE",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]

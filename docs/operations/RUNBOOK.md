@@ -1,6 +1,6 @@
 # Operations Runbook
 
-更新日: 2026-03-01
+更新日: 2026-03-03
 
 ## Day-1 セットアップ
 
@@ -129,6 +129,24 @@ make release-ready RUN_ID=run_20260228_154238_exp001_raw
 4. `validate_figure_integrity.py --strict` - 図表整合検証
 5. `template-sync-check` - TEMPLATE 同期検証
 6. `make report` - レポート生成
+
+## CLI配布ゲート（製品配布向け）
+
+CLI配布前は以下を実行:
+
+```bash
+make release-cli-ready LABEL=local TARGET=linux-x86_64
+```
+
+チェック内容:
+
+1. `cargo build --release -p ar-cli`
+2. `cargo build --profile release-dist -p ar-cli`
+3. `check_binary_size.sh`（stripped binary `<= 3.5MB`）
+4. `bench_cli_regression.py`（query p50 劣化 `<= 5%`）
+5. `package_cli_distribution.sh`（`dist/*.tar.gz` + checksum）
+
+詳細は `docs/operations/CLI_DISTRIBUTION.md` を参照。
 
 ## Cross-Env 再現
 

@@ -1,6 +1,6 @@
 # Asset Classification and Connectivity
 
-更新日: 2026-03-01
+更新日: 2026-03-03
 
 ## 目的
 
@@ -32,6 +32,7 @@
 |---|---|---|---|
 | `scripts/pipeline/*` | active | 実験標準導線（preflight/adapt/eval） | `docs/PIPELINE_GUIDE.md`, `Makefile` |
 | `scripts/ci/*` | active | 契約検証・品質ゲート | `docs/operations/RUNBOOK.md`, `Makefile` |
+| `scripts/release/*` | active | CLI配布ゲート（サイズ/性能/パッケージ） | `docs/operations/CLI_DISTRIBUTION.md`, `Makefile` |
 | `scripts/daemon/*` | active | 常駐運用（agentd） | `docs/operations/AGENTD.md` |
 | `scripts/dev/prepare_worktree.sh` | active | 運用初期化 | `docs/operations/AGENTD.md` |
 | `scripts/benchmark/fit_symbol_language_weights.py` | active | 重み学習の公式導線 | `scripts/pipeline/run_corpus_auto_adapt.py` |

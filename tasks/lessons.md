@@ -2,6 +2,63 @@
 
 ## 実験・評価に関する教訓
 
+### 2026-03-03: CLI配布は「実行可能成果物」中心で設計する
+
+**観測事実**:
+- 既存CDは文書アーカイブ中心で、ユーザーがそのまま実行できるCLI配布になっていなかった
+- `README.md` 不在で Python package build が失敗していた
+- `/mnt/d/...` 上では `uv build` の sdist が I/O待ちで timeout しうる一方、`/tmp` の ext4 側では同コマンドが成功した
+
+**教訓**:
+1. 配布導線は docs ではなく「実行可能 binary + checksum + install手順」を成果物の中心に置くべき
+2. CLIの名称変更時は互換名を維持して段階移行しないと既存運用を壊しやすい
+3. サイズ最適化は感覚でなく、`size gate` と `perf regression gate` を同時に自動化して管理する
+4. WSL/DrvFS 環境では packaging の I/O 特性差があるため、再現検証は ext4 側ワークスペースで確認する
+
+**対応**:
+- `release-dist` プロファイル + `check_binary_size.sh` + `bench_cli_regression.py` を導入
+- `package_cli_distribution.sh` と `cd-release.yml` を実行可能CLI配布向けに再設計
+- `ar` 正式化 + `ar-cli` 互換維持、`AR_BIN_PATH` 優先で backend 解決順序を更新
+
+---
+
+### 2026-03-03: 偽最適防止ガードを先に実装してから速度探索を回す
+
+**観測事実**:
+- `aggregate_results` を渡さない `best-of-both` 評価では、探索が速く見えても `Recall` が `33/35` まで低下し、guard で即失敗した
+- `avg_latency` 単独最適化は、`hard` や `usage_search` のような難ケース劣化を見落としやすい
+- strict guard 下の再実行で `Recall=35/35`, `hard recall=1.0`, `usage recall=1.0` を維持しつつ `avg_latency=164.3ms` を確認できた
+
+**教訓**:
+1. 速度最適化ループは「探索（非strict）」と「確定（strict）」を分離し、最終採用は必ず strict guard を通す
+2. 参照比較なしの単発評価は偽最適を見抜けないため、`reference_summary` を固定して差分ゲートを常時有効化する
+3. `best-of-both` 系評価では `aggregate_results` 未指定を運用上の失敗として扱うべき
+
+**対応**:
+- `run_final_evaluation.py` に anti-false-opt guard（`overall recall drop`, `avg_mrr drop`, `hard/usage recall floor`）を実装
+- `run_experiment_route.py` から guard 引数を伝播し、route 経路でも strict 強制を可能化
+- `anti_false_opt_guard.json` を出力し、`final_summary`/`sota_backlog` に判定結果を残す
+
+---
+
+### 2026-03-03: `ar` コマンド導入時は GNU `ar` との衝突前提で launcher を設計する
+
+**観測事実**:
+- 本環境では既定で `/usr/bin/ar`（GNU binutils）が存在し、単純な rename/置換はビルド系ワークフローを壊す可能性がある
+- 初期 launcher で `ar --version` を AgentRetrieve 側へ転送すると、CLI 非対応引数で失敗した
+
+**教訓**:
+1. 既存システムコマンドと同名を採用する場合、サブコマンド単位で明示ルーティングする
+2. launcher の検証には「対象CLI経路」と「既存コマンドfallback経路」の両方を必ず含める
+3. `--version` のような共通フラグは、実装側サポート有無を確認してから転送対象に含める
+
+**対応**:
+- `scripts/dev/install_ar_launcher.sh` を実装し、`ix/q/help` のみ AgentRetrieve CLI へ転送
+- それ以外は GNU `ar` へフォールバックし、`AR_LAUNCHER_FORCE_GNU=1` で強制切替可能にした
+- `skills/l2_ops/runtime/ar-cli-runtime/SKILL.md` を追加し、標準導入/検証手順を固定した
+
+---
+
 ### 2026-02-26: フルパイプライン実行
 
 **観測事実**:
@@ -795,3 +852,79 @@
 - expansion 辞書を縮小（`http/retry/parse/completion` のみ）
 - `ar-core` tokenizer に複合語分割を追加し、`curl`/`cli` index を再構築
 - 汎用ルールのまま `overall recall 100.0% (35/35)` を達成（pending は `curl mrr_gap=0.011`）
+
+---
+
+### 2026-03-03: 設定融合（RRF）は残ギャップ収束に有効だが、遅延コストを伴う
+
+**観測事実**:
+- `curl` は単一設定だと `recall=1.0` と `mrr>=0.5` を同時達成しづらかった
+- `fixed` と `aggregate` の top-path を RRF 融合することで、全repo `sota_ready`（pending 0）へ到達した
+- 融合選択時は評価レイテンシが増える（2設定評価ぶんのコスト）
+
+**教訓**:
+1. 収束終盤の微小ギャップには、重み調整より設定融合が効くことがある
+2. 融合は「品質優先モード」として明示し、通常運用とは分離すべき
+3. 評価指標は精度だけでなく latency とのトレードオフを併記する
+
+**対応**:
+- `run_final_evaluation.py` の `best-of-both` に `fusion_rrf` 候補を追加
+- `results.latest` と `todo` に pending=0 到達を反映
+
+---
+
+### 2026-03-03: 汎用再ランクは「語彙展開の絞り込み」と「path重み係数」をセットで調整する
+
+**観測事実**:
+- `config` の展開語を広げすぎると（`setting/option` 等）、`curl-med-02` で `setopt` 系が過剰上位化し、`tool_cfgable.h` が top10 から落ちた
+- `raw score` が強いC系repoでは、path prior が弱いと `src/*` 正解より `lib/*` 汎用ファイルが上位を占有した
+- `path bonus` の係数を引き上げると、repo固有分岐なしで `35/35` を維持しつつ MRR を改善できた
+
+**教訓**:
+1. query expansion は「高信頼な略語」へ限定し、意味拡散する語は入れない
+2. rerank 設計では `raw score` と `path prior` のスケール差を明示的に合わせる
+3. 改善検証は「対象repo短縮評価 -> 全repoフル評価」の順で Recall 退行を即検知する
+
+**対応**:
+- expansion を `config -> cfg` に再縮小
+- `_path_bonus` に低信号パス減点（`mock/stub/fixtures/generated/vendor`）と `internal/` prior を追加
+- `_rerank_results` の path bonus 係数を強化し、Cycle-9 で `MRR 0.773 -> 0.868` を確認
+
+---
+
+### 2026-03-03: 低遅延化では「候補生成」と「候補選択」を分離して最適化する
+
+**観測事実**:
+- `best-of-both` は精度最大化のため `fusion` を選びやすく、特に `curl` で平均遅延が大きく増加した
+- 候補集合自体は `fixed/aggregate` だけで `recall=1.0` と `mrr>=0.5` を満たせるケースが多い
+- 「SOTA閾値を満たす候補の最速選択」に切り替えるだけで、全体遅延を大きく削減できた
+
+**教訓**:
+1. 精度最適化のロジックと運用時の選択ロジックは分離して設計する
+2. 低遅延運用では、まず閾値制約を満たす集合を作り、その中で latency 最小を選ぶ
+3. `fusion` は常用せず、Recall欠損を埋める救済パスとして扱う
+
+**対応**:
+- `run_final_evaluation.py` に `--selection-policy`（`quality-first` / `latency-first-sota`）を追加
+- `run_experiment_route.py` に `--final-selection-policy` を追加
+- Cycle-L1 で `Recall 100%` を維持しつつ `avg latency 298.0ms -> 215.9ms` を確認
+
+---
+
+### 2026-03-03: variant探索数は遅延を支配するため、品質を落とさない最小capを先に探索する
+
+**観測事実**:
+- `max_variants=1` は `avg latency` を大幅短縮するが、`pytest` で recall が落ちた（34/35）
+- `max_variants=2` へ戻すと recall を 35/35 に回復しつつ、遅延を大きく削減できた
+- `max_variants>=3` では品質改善は限定的で、遅延だけ増える傾向が明確だった
+
+**教訓**:
+1. 低遅延化はまず `variant cap` を探索し、recall 崩壊しない最小点を採用する
+2. `max_results` や fallback 量は `variant cap` 決定後に微調整する方が収束が速い
+3. 「速いがrecall欠損」の設定は本番採用せず、探索結果として分離して記録する
+
+**対応**:
+- `run_final_evaluation.py` に `--max-variants` / `--max-results-per-variant` / `--merge-stop-threshold` / `--fallback-trigger-size` / `--fallback-limit` を追加
+- `run_experiment_route.py` に同ノブを伝播
+- Cycle-L2 で `Recall 35/35`, `MRR 0.839`, `avg latency 188.6ms` を確認し、`<=200ms` を達成
+- `rg` 基準（v2_full, 35 tasks）を再計測し、`avg 849.1ms / recall 57.1%` と比較して優位を確認
