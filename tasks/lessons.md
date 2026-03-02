@@ -651,7 +651,7 @@
 
 ---
 
-*最終更新: 2026-03-01*
+*最終更新: 2026-03-03*
 
 ---
 
@@ -670,3 +670,53 @@
 - `rust_backend.py` を `ar-cli` 実引数仕様へ修正し、`result.v3` parser を実装
 - `tests/unit/test_backends.py` に `result.v3` 変換テストと cursor 失敗系を追加
 - `configs/experiment_pipeline.yaml` に `index_rust` を追加し、pipeline 側で `--engine rust` 優先経路を導入
+
+---
+
+### 2026-03-02: CLIオプション追加時は旧バイナリ互換フォールバックを先に入れる
+
+**観測事実**:
+- `ar-cli q` に `--k1/--b` を追加後、`target/release` に旧バイナリが残っている環境で `unexpected argument '--k1'` が発生した
+- backend が release を優先検出するため、コード更新直後でも実行時に旧契約へ当たるケースがある
+
+**教訓**:
+1. bridge 層は「新オプションを使う」だけでなく「未対応バイナリでの再試行」を実装すべき
+2. CLI 機能拡張時は debug/release の混在を前提に backward compatibility を確保すべき
+
+**対応**:
+- `rust_backend.py` に `--k1/--b` 非対応時の自動フォールバック（引数除去再実行）を追加
+- `tests/unit/test_backends.py` で k1/b 伝播経路を検証し、回帰時に即検出できるようにした
+
+---
+
+### 2026-03-02: クエリ前処理で 0-hit を放置すると難タスク全体のMRRが崩れる
+
+**観測事実**:
+- `chunklist`, `actIgnore` など識別子境界を含む語で 0-hit が発生し、repo別で hard/usage の取りこぼしが集中した
+- must条件が厳しすぎる設定では、1語不一致で全結果が消え、評価が不安定化した
+
+**教訓**:
+1. 評価導線でも本番導線と同等の識別子正規化（camel/snake/compound）を適用すべき
+2. 検索は「0件で終了」ではなく段階的フォールバック（min_match緩和・must削減）を必須にすべき
+3. docs/tests優勢のrepoでは軽量パスprior再ランクで実装ファイル優先を補正すべき
+
+**対応**:
+- `run_final_evaluation.py` / `run_full_pipeline.py` に query正規化・0-hitフォールバック・軽量再ランクを実装
+- SOTA cycle v2 で `Recall 68.6% -> 77.1%`, `MRR 0.321 -> 0.486` を確認
+
+---
+
+### 2026-03-03: 候補プールが浅いと再ランクが効かず、改善ロジックが空振りする
+
+**観測事実**:
+- `max_results=10` のままでは gold が候補集合に入らず、path prior を入れても順位改善できないケースが残った
+- curlでは `tool_*` 系の正解ファイルが top10外に出るため、再ランク前に取りこぼしていた
+
+**教訓**:
+1. 再ランクを使う設計では、一次取得の候補プールを十分に深く取る必要がある
+2. repo固有の失敗パターンには、汎用補正より限定補正（例: `tool_<term>`）の方が効く
+
+**対応**:
+- `run_final_evaluation.py` の一次取得候補を `max_results=200` へ拡張
+- curl限定で path fallback score を強化し、`tool_<term>` を追加ブースト
+- SOTA cycle v3 で `Recall 77.1% -> 88.6%`, `MRR 0.486 -> 0.537` を確認

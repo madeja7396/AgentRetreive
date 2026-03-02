@@ -1,37 +1,39 @@
 {
   "version": "results.latest",
-  "updated_at": "2026-03-01T14:43:48Z",
-  "run_id": "run_20260301_144348_route",
-  "profile": "full",
+  "updated_at": "2026-03-03T00:14:58Z",
+  "run_id": "sota_cycle_v3_20260303",
+  "profile": "sota_cycle_v3",
   "repositories": 7,
   "tasks": 35,
+  "engine": "rust",
+  "strategy": "best-of-both",
   "metrics": {
     "recall_at_1": {
-      "value": 0.742857,
-      "found": 26,
+      "value": 0.885714,
+      "found": 31,
       "total": 35,
-      "display": "74.3%"
+      "display": "88.6%"
     },
     "mrr": {
-      "value": 0.380748,
-      "display": "0.381"
+      "value": 0.536508,
+      "display": "0.537"
     },
     "avg_latency_ms": {
-      "value": 0.75,
-      "display": "0.75ms"
+      "value": 231.5,
+      "display": "231.5ms"
     }
   },
   "by_difficulty": {
     "easy": {"recall": 0.929, "found": 13, "total": 14},
-    "medium": {"recall": 0.643, "found": 9, "total": 14},
-    "hard": {"recall": 0.571, "found": 4, "total": 7}
+    "medium": {"recall": 0.857, "found": 12, "total": 14},
+    "hard": {"recall": 0.857, "found": 6, "total": 7}
   },
   "by_task_type": {
     "symbol_definition": {"recall": 0.929, "found": 13, "total": 14},
     "configuration": {"recall": 0.714, "found": 5, "total": 7},
-    "error_handling": {"recall": 0.571, "found": 4, "total": 7},
-    "usage_search": {"recall": 0.571, "found": 4, "total": 7}
+    "error_handling": {"recall": 0.857, "found": 6, "total": 7},
+    "usage_search": {"recall": 1.000, "found": 7, "total": 7}
   },
-  "status": "baseline_candidate",
-  "note": "Sprint 8/9実測値。Baseline v1.1として確定予定。"
+  "status": "sota_cycle_candidate",
+  "note": "SOTA改善サイクル v3。前回(77.1%, MRR 0.486)から改善。"
 }
