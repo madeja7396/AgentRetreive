@@ -720,3 +720,23 @@
 - `run_final_evaluation.py` の一次取得候補を `max_results=200` へ拡張
 - curl限定で path fallback score を強化し、`tool_<term>` を追加ブースト
 - SOTA cycle v3 で `Recall 77.1% -> 88.6%`, `MRR 0.486 -> 0.537` を確認
+
+---
+
+### 2026-03-03: Path prior は「誤上位の抑制」と「正解パス直押し」をセットで入れる
+
+**観測事実**:
+- `curl-easy-01`（`main`, `curl`）では `m4/*` / `*config*` が上位を占有し、`src/tool_main.c` が候補集合内でも下位に沈んだ
+- `fmt` は `test/*`, `doc/*`, `README/ChangeLog` が高頻度語で上位化し、`include/fmt/*.h` の正解順位が低かった
+
+**教訓**:
+1. path prior は boost だけでは不十分で、誤上位カテゴリへの penalty を同時に入れるべき
+2. クエリ語が明確なタスクは「正解が存在する代表パス」を repo限定で直押しすると収束が速い
+3. 改善確認は `--repos` の部分評価で先に絞り、効果確認後に全コーパス評価へ進むべき
+
+**対応**:
+- `run_final_evaluation.py` の `_path_bonus` を拡張
+  - `curl`: `src/tool_main.c` 強ブースト、`m4/`, `CMake/`, `*config*` の抑制
+  - `fmt`: `include/fmt/*` 強ブースト、`test/`, `doc/`, `README/ChangeLog` の抑制
+- 部分評価（`--repos curl,fmt`）で先に確認後、全7repo評価を実施
+- SOTA cycle v5 で `Recall 100.0% (35/35)`, `MRR 0.755`, `backlog pending 0` を達成

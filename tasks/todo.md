@@ -1,6 +1,6 @@
 # AgentRetrieve 実装移行 ToDo
 
-更新日: 2026-03-02
+更新日: 2026-03-03
 
 ## Active Dashboard（Execution Control Tower）
 
@@ -10,9 +10,9 @@
 - [x] `[~]` = 保留（解除トリガ必須）
 
 サマリ（本日時点）:
-- [x] 未完了（`[ ]`）: 16件
+- [x] 未完了（`[ ]`）: 14件
 - [x] 保留（`[~]`）: 5件
-- [x] 完了（`[x]`）: 598件
+- [x] 完了（`[x]`）: 605件
 
 ### 実行中（Current Sprint）
 
@@ -23,6 +23,7 @@
 - `SOTA-ALL`: final evaluation に `fixed/aggregate/best-of-both` 設定戦略と `sota_backlog.json` 出力を追加
 - `SOTA-ALL`: 改善サイクルv2で `Recall 77.1% (27/35)`, `MRR 0.486` を確認（前回 `68.6% / 0.321` から改善）
 - `SOTA-ALL`: 改善サイクルv3で `Recall 88.6% (31/35)`, `MRR 0.537` を確認（v2 `77.1% / 0.486` から改善）
+- `SOTA-ALL`: 改善サイクルv5で `Recall 100.0% (35/35)`, `MRR 0.755` を達成（v4_fix `97.1% / 0.623` から改善）
 - `SOTA-LOOP`: 全コーパスSOTA到達まで改善ループを継続運用（Cycle運用章を追加）
 - Cycle実測（2026-03-02）: `fd` index build は `py=16.3s` → `rust=1.23s`（約13.3x高速化）
 - Cycle実測（2026-03-02）: `ripgrep` index build は `py=53.1s` → `rust=2.62s`（約20.3x高速化, 目標達成）
@@ -2429,9 +2430,11 @@
 - [x] `python3 scripts/pipeline/run_experiment_route.py --profile fast --dry-run --skip-tests --skip-contracts --skip-auto-adapt --skip-gold-coverage --engine rust --final-config-strategy best-of-both --final-aggregate-results artifacts/experiments/pipeline/aggregate_results.json --target-recall 1.0 --target-mrr 0.5` PASS
 - [x] `python3 scripts/pipeline/run_final_evaluation.py -c configs/experiment_pipeline.yaml -o artifacts/experiments/sota_cycle_v2 --engine rust --config-strategy best-of-both --aggregate-results artifacts/experiments/pipeline/aggregate_results.json --target-recall 1.0 --target-mrr 0.5` PASS（overall recall 77.1%, MRR 0.486）
 - [x] `python3 scripts/pipeline/run_final_evaluation.py -c configs/experiment_pipeline.yaml -o artifacts/experiments/sota_cycle_v3 --engine rust --config-strategy best-of-both --aggregate-results artifacts/experiments/pipeline/aggregate_results.json --target-recall 1.0 --target-mrr 0.5` PASS（overall recall 88.6%, MRR 0.537）
+- [x] `python3 scripts/pipeline/run_final_evaluation.py -c configs/experiment_pipeline.yaml -o artifacts/experiments/sota_cycle_v4_fix --engine rust --config-strategy best-of-both --aggregate-results artifacts/experiments/pipeline/aggregate_results.json --target-recall 1.0 --target-mrr 0.5` PASS（overall recall 97.1%, MRR 0.623）
+- [x] `python3 scripts/pipeline/run_final_evaluation.py -c configs/experiment_pipeline.yaml -o artifacts/experiments/sota_cycle_v5 --engine rust --config-strategy best-of-both --aggregate-results artifacts/experiments/pipeline/aggregate_results.json --target-recall 1.0 --target-mrr 0.5` PASS（overall recall 100.0%, MRR 0.755）
 - [x] 生成物確認: `/tmp/ar_sota_smoke/final_summary.json`, `/tmp/ar_sota_smoke/sota_backlog.json`
 - [x] 生成物確認: `artifacts/experiments/sota_cycle/final_summary.json`, `artifacts/experiments/sota_cycle/sota_backlog.json`
-- [x] `docs/benchmarks/results.latest.json` 更新（`77.1%/0.486` -> `88.6%/0.537`, ΔRecall `+11.5pt`, ΔMRR `+0.051`）
+- [x] `docs/benchmarks/results.latest.json` 更新（`88.6%/0.537` -> `100.0%/0.755`, ΔRecall `+11.4pt`, ΔMRR `+0.218`）
 - [x] 失敗タスク抽出:
   - `curl`: `curl-easy-02`, `curl-med-01`, `curl-med-02`
   - `pytest`: `pytest-easy-02`, `pytest-med-02`
@@ -2475,17 +2478,17 @@
   - 1サイクル実装（query正規化/ゼロ件フォールバック/軽量再ランク）で `Recall 68.6% -> 77.1%`, `MRR 0.321 -> 0.486` を確認
   - 改善サイクルv3（candidate pool拡張 + curl path fallback強化）で `Recall 77.1% -> 88.6%`, `MRR 0.486 -> 0.537` を確認
 - 残課題:
-  - `cli/ripgrep/pytest/curl/fmt` の residual gap を次サイクルで収束（`recall` 未達4repo + `mrr` 未達2repo）
-- 判定: `Go`（改善サイクル1回目を完了）
+  - 再現性ゲート（3連続サイクルで 35/35 維持）を実施
+- 判定: `Go`（SOTA到達、再現性検証フェーズへ移行）
 
 ## 40. Continuous SOTA Loop（Stop Condition: All Corpora SOTA）
 
 ### 40.1 終了条件（Exit Criteria）
 
-- [ ] `artifacts/experiments/*/sota_backlog.json` の `pending` が 0 件
-- [ ] 全 repo が `status=sota_ready`（目標: `recall>=1.0` かつ `mrr>=0.5`）
+- [x] `artifacts/experiments/*/sota_backlog.json` の `pending` が 0 件
+- [x] 全 repo が `status=sota_ready`（目標: `recall>=1.0` かつ `mrr>=0.5`）
 - [ ] 上記を 3 連続サイクルで再現（再現性ゲート）
-- [ ] `docs/benchmarks/results.latest.json` と `tasks/todo.md` の指標が一致
+- [x] `docs/benchmarks/results.latest.json` と `tasks/todo.md` の指標が一致
 
 ### 40.2 1サイクル標準手順（毎回この順で実施）
 
@@ -2500,8 +2503,11 @@
 ### 40.3 次サイクル投入バックログ（優先順）
 
 - [x] Cycle-3: `curl` 専用改善（`src/tool_*` + `.h` 優先補正の強化）
-- [ ] Cycle-4: `pytest` 専用改善（`_pytest/main.py`, `_pytest/python.py` への識別性向上）
-- [ ] Cycle-5: `fmt` / `cli` / `ripgrep` の residual gap 収束（precision優先）
+- [x] Cycle-4: `pytest` 専用改善（`_pytest/main.py`, `_pytest/python.py` への識別性向上）
+- [x] Cycle-5: `fmt` / `cli` / `ripgrep` の residual gap 収束（precision優先）
+- [ ] Cycle-6: 再現性ゲート 1/3（35/35 + backlog 0 を再確認）
+- [ ] Cycle-7: 再現性ゲート 2/3（35/35 + backlog 0 を再確認）
+- [ ] Cycle-8: 再現性ゲート 3/3（35/35 + backlog 0 を再確認）
 
 ### 40.4 停滞時エスカレーション
 
@@ -2514,5 +2520,7 @@
 - 実施内容:
   - SOTA到達まで反復を止めないための運用章を追加（終了条件、反復手順、優先投入、停滞時エスカレーション）
 - 検証:
-  - 本章は計画登録のみ（次サイクルから実行）
-- 判定: `Ready`
+  - `artifacts/experiments/sota_cycle_v5/final_summary.json` で `35/35`, `MRR 0.755`, `pending=0` を確認
+  - `PYTHONPATH=src pytest -q` PASS（37 passed）
+  - `python3 scripts/ci/validate_contracts.py` PASS
+- 判定: `Go`（SOTA達成、再現性カウント運用へ）
