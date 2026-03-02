@@ -77,7 +77,16 @@ def cmd_index_build(args: argparse.Namespace) -> int:
     output_path = Path(args.output)
     backend.save_index(idx, output_path)
     print(f"Index saved: {output_path}")
-    print(f"Documents: {idx.total_docs}, Terms: {len(idx.index)}, Total tokens: {idx.total_terms}")
+    rust_stats = getattr(idx, "_rust_stats", None)
+    if isinstance(rust_stats, dict):
+        docs = int(rust_stats.get("docs", idx.total_docs))
+        terms = int(rust_stats.get("terms", len(idx.index)))
+        total_tokens = int(rust_stats.get("total_tokens", idx.total_terms))
+    else:
+        docs = idx.total_docs
+        terms = len(idx.index)
+        total_tokens = idx.total_terms
+    print(f"Documents: {docs}, Terms: {terms}, Total tokens: {total_tokens}")
     
     return 0
 

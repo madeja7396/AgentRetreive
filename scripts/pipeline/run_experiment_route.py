@@ -42,6 +42,7 @@ def _build_raw_eval_config(
     root: Path,
     source_config_path: Path,
     output_path: Path,
+    engine_backend: str,
     dry_run: bool,
 ) -> Path:
     if dry_run:
@@ -58,6 +59,7 @@ def _build_raw_eval_config(
             continue
         updated = dict(repo)
         updated["index"] = f"artifacts/datasets/{repo_id}.index.json"
+        updated["index_rust"] = f"artifacts/datasets/{repo_id}.index.bin"
         updated["source"] = f"artifacts/datasets/raw/{repo_id}"
         rewritten.append(updated)
     config["repositories"] = rewritten
@@ -343,6 +345,7 @@ def main() -> int:
             root=root,
             source_config_path=final_config_path,
             output_path=raw_eval_config_path,
+            engine_backend=args.engine,
             dry_run=args.dry_run,
         )
         final_eval_config = str(final_eval_config_path.relative_to(root)).replace("\\", "/")

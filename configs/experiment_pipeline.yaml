@@ -6,74 +6,92 @@ repositories:
   - id: fd
     language: rust
     index: artifacts/datasets/fd.index.json
+    index_rust: artifacts/datasets/fd.index.bin
     source: artifacts/datasets/raw/fd
   - id: ripgrep
     language: rust
     index: artifacts/datasets/ripgrep.index.json
+    index_rust: artifacts/datasets/ripgrep.index.bin
     source: artifacts/datasets/raw/ripgrep
   - id: fzf
     language: go
     index: artifacts/datasets/fzf.index.json
+    index_rust: artifacts/datasets/fzf.index.bin
     source: artifacts/datasets/raw/fzf
   - id: fmt
     language: cpp
     index: artifacts/datasets/fmt.index.json
+    index_rust: artifacts/datasets/fmt.index.bin
     source: artifacts/datasets/raw/fmt
   - id: curl
     language: c
     index: artifacts/datasets/curl.index.json
+    index_rust: artifacts/datasets/curl.index.bin
     source: artifacts/datasets/raw/curl
   - id: pytest
     language: python
     index: artifacts/datasets/pytest.index.json
+    index_rust: artifacts/datasets/pytest.index.bin
     source: artifacts/datasets/raw/pytest
   - id: cli
     language: go
     index: artifacts/datasets/cli.index.json
+    index_rust: artifacts/datasets/cli.index.bin
     source: artifacts/datasets/raw/cli
   - id: axios
     language: javascript
     index: artifacts/datasets/axios.index.json
+    index_rust: artifacts/datasets/axios.index.bin
     source: artifacts/datasets/raw/axios
   - id: typescript
     language: typescript
     index: artifacts/datasets/typescript.index.json
+    index_rust: artifacts/datasets/typescript.index.bin
     source: artifacts/datasets/raw/typescript
   - id: gson
     language: java
     index: artifacts/datasets/gson.index.json
+    index_rust: artifacts/datasets/gson.index.bin
     source: artifacts/datasets/raw/gson
   - id: cabal
     language: haskell
     index: artifacts/datasets/cabal.index.json
+    index_rust: artifacts/datasets/cabal.index.bin
     source: artifacts/datasets/raw/cabal
   - id: elixir
     language: elixir
     index: artifacts/datasets/elixir.index.json
+    index_rust: artifacts/datasets/elixir.index.bin
     source: artifacts/datasets/raw/elixir
   - id: aspnetcore
     language: csharp
     index: artifacts/datasets/aspnetcore.index.json
+    index_rust: artifacts/datasets/aspnetcore.index.bin
     source: artifacts/datasets/raw/aspnetcore
   - id: symfony
     language: php
     index: artifacts/datasets/symfony.index.json
+    index_rust: artifacts/datasets/symfony.index.bin
     source: artifacts/datasets/raw/symfony
   - id: rails
     language: ruby
     index: artifacts/datasets/rails.index.json
+    index_rust: artifacts/datasets/rails.index.bin
     source: artifacts/datasets/raw/rails
   - id: ktor
     language: kotlin
     index: artifacts/datasets/ktor.index.json
+    index_rust: artifacts/datasets/ktor.index.bin
     source: artifacts/datasets/raw/ktor
   - id: swiftpm
     language: swift
     index: artifacts/datasets/swiftpm.index.json
+    index_rust: artifacts/datasets/swiftpm.index.bin
     source: artifacts/datasets/raw/swiftpm
   - id: flutter
     language: dart
     index: artifacts/datasets/flutter.index.json
+    index_rust: artifacts/datasets/flutter.index.bin
     source: artifacts/datasets/raw/flutter
 
 # Tasksets

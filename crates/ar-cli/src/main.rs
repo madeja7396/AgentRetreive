@@ -2,12 +2,14 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
+use ar_core::wal::{WalEntry, WalManager};
 use ar_core::{
     healthcheck, InvertedIndex, SearchHit, SearchQuery, DEFAULT_PATTERN_CSV, ENGINE_VERSION,
 };
 use clap::{Args, Parser, Subcommand};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use std::collections::HashMap;
 
 #[derive(Parser, Debug)]
 #[command(name = "ar", about = "AgentRetrieve Rust CLI")]
@@ -28,6 +30,7 @@ enum Commands {
 #[derive(Subcommand, Debug)]
 enum IxCommands {
     Build(IxBuildArgs),
+    Update(IxUpdateArgs),
 }
 
 #[derive(Args, Debug)]
@@ -38,6 +41,26 @@ struct IxBuildArgs {
     output: PathBuf,
     #[arg(long, default_value = DEFAULT_PATTERN_CSV)]
     pattern: String,
+}
+
+#[derive(Args, Debug)]
+struct IxUpdateArgs {
+    #[arg(long)]
+    index: PathBuf,
+    #[arg(long)]
+    dir: PathBuf,
+    #[arg(short, long)]
+    output: Option<PathBuf>,
+    #[arg(long, default_value = DEFAULT_PATTERN_CSV)]
+    pattern: String,
+    #[arg(long)]
+    wal: Option<PathBuf>,
+    #[arg(long)]
+    snapshot_dir: Option<PathBuf>,
+    #[arg(long, default_value_t = 1000)]
+    compact_threshold: u64,
+    #[arg(long, default_value_t = false)]
+    compact_now: bool,
 }
 
 #[derive(Args, Debug)]
@@ -168,6 +191,7 @@ fn main() -> Result<()> {
     match cli.command {
         Commands::Ix { command } => match command {
             IxCommands::Build(args) => cmd_ix_build(args),
+            IxCommands::Update(args) => cmd_ix_update(args),
         },
         Commands::Q(args) => cmd_query(args),
     }
@@ -186,6 +210,99 @@ fn cmd_ix_build(args: IxBuildArgs) -> Result<()> {
         stats.avg_doc_len,
         ENGINE_VERSION,
         healthcheck(),
+    );
+    Ok(())
+}
+
+fn cmd_ix_update(args: IxUpdateArgs) -> Result<()> {
+    let old_idx = InvertedIndex::load(&args.index)
+        .with_context(|| format!("failed to load existing index: {}", args.index.display()))?;
+    let new_idx = InvertedIndex::build_from_dir(&args.dir, &args.pattern)?;
+
+    let output_path = args.output.unwrap_or_else(|| args.index.clone());
+    let tmp_path = output_path.with_extension("tmp");
+    new_idx.save(&tmp_path)?;
+    fs::rename(&tmp_path, &output_path).with_context(|| {
+        format!(
+            "failed to atomically replace index {}",
+            output_path.display()
+        )
+    })?;
+
+    let wal_path = args
+        .wal
+        .unwrap_or_else(|| output_path.with_extension("wal"));
+    let snapshot_dir = args.snapshot_dir.unwrap_or_else(|| {
+        let base = output_path
+            .file_name()
+            .map(|v| v.to_string_lossy().into_owned())
+            .unwrap_or_else(|| "index".to_string());
+        output_path
+            .parent()
+            .unwrap_or(Path::new("."))
+            .join(format!("{base}.snapshots"))
+    });
+
+    let mut wal = WalManager::new_with_threshold(&wal_path, &snapshot_dir, args.compact_threshold)?;
+    let mut appended = 0u64;
+
+    let old_docs: HashMap<&str, _> = old_idx
+        .documents()
+        .iter()
+        .map(|doc| (doc.path.as_str(), doc))
+        .collect();
+    let new_docs: HashMap<&str, _> = new_idx
+        .documents()
+        .iter()
+        .map(|doc| (doc.path.as_str(), doc))
+        .collect();
+
+    for (path, new_doc) in &new_docs {
+        match old_docs.get(path) {
+            Some(old_doc) if old_doc.content_hash == new_doc.content_hash => {}
+            _ => {
+                wal.append(&WalEntry::Upsert {
+                    doc_id: new_doc.id,
+                    path: (*path).to_string(),
+                    content_hash: new_doc.content_hash.clone(),
+                    tokens: Vec::new(),
+                })?;
+                appended += 1;
+            }
+        }
+    }
+
+    for (path, old_doc) in &old_docs {
+        if !new_docs.contains_key(path) {
+            wal.append(&WalEntry::Delete { doc_id: old_doc.id })?;
+            appended += 1;
+        }
+    }
+
+    wal.create_snapshot_marker()?;
+    let compacted = if args.compact_now || wal.should_compact() {
+        let snapshot = wal.compact()?;
+        Some(snapshot)
+    } else {
+        None
+    };
+
+    let old_stats = old_idx.stats();
+    let new_stats = new_idx.stats();
+    println!(
+        "index_updated={} docs={} terms={} total_tokens={} avg_doc_len={:.2} delta_docs={} wal_entries={} wal={}{}",
+        output_path.display(),
+        new_stats.total_docs,
+        new_stats.unique_terms,
+        new_stats.total_terms,
+        new_stats.avg_doc_len,
+        new_stats.total_docs as isize - old_stats.total_docs as isize,
+        appended,
+        wal_path.display(),
+        compacted
+            .as_ref()
+            .map(|p| format!(" compacted_snapshot={}", p.display()))
+            .unwrap_or_default(),
     );
     Ok(())
 }

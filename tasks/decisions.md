@@ -1,6 +1,6 @@
 # Decision Log (ADR Lite)
 
-更新日: 2026-02-25
+更新日: 2026-03-02
 
 | ID | Topic | Decision | Rationale | Consequence | Status |
 |---|---|---|---|---|---|
@@ -12,6 +12,7 @@
 | D-006 | Data Provenance | dataset manifest + run registry を必須化する | 研究成果の追跡可能性と監査性を担保する | 記録負荷が増えるため自動化が必要 | Accepted |
 | D-007 | Environment Independence | lockfile 固定 + 1 コマンド再現手順を採用する | 環境依存を減らし再現性を高める | ツールチェーン更新時に互換検証が必要 | Accepted |
 | D-008 | Paper Artifacts | 図表はスクリプト生成のみを許可し手編集を禁止する | 論文値の再生成性を担保する | 可視化修正はコード変更で対応する必要あり | Accepted |
+| D-009 | Rust Index Path Policy | pipeline config は `index`(json) と `index_rust`(bin) の二重経路を許可し、`--engine rust` 時は `index_rust` を優先する | Rust runtime はバイナリ index を要求し、Python runtime はJSON index運用を継続するため | config 管理項目が1つ増えるが、engine切替時の破壊的変更を避けられる | Accepted |
 
 ## 未決事項
 

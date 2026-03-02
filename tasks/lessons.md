@@ -652,3 +652,21 @@
 ---
 
 *最終更新: 2026-03-01*
+
+---
+
+### 2026-03-02: CLI bridge は実装コードではなく `--help` 契約をSSOTにする
+
+**観測事実**:
+- `rust_backend.py` が `ar-cli` の旧想定引数（`--source`, `--patterns`）を使い、実行時に即失敗した
+- 単体テストは binary 存在確認のみで、引数契約のズレを検出できなかった
+
+**教訓**:
+1. bridge 層は「呼び出し先の `--help` 出力」を契約としてテストに固定すべき
+2. `result.v3` などの出力契約は parser テストを先に書いてから実装するべき
+3. `engine=rust` の導線では index 形式（json/bin）ポリシーを設定に明示すべき
+
+**対応**:
+- `rust_backend.py` を `ar-cli` 実引数仕様へ修正し、`result.v3` parser を実装
+- `tests/unit/test_backends.py` に `result.v3` 変換テストと cursor 失敗系を追加
+- `configs/experiment_pipeline.yaml` に `index_rust` を追加し、pipeline 側で `--engine rust` 優先経路を導入

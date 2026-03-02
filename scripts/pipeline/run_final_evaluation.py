@@ -133,6 +133,21 @@ def evaluate_repository(
     }
 
 
+def _resolve_repo_index_path(repo_config: dict, engine_backend: str) -> Path:
+    if engine_backend == "rust":
+        raw_rust = repo_config.get("index_rust")
+        if isinstance(raw_rust, str) and raw_rust:
+            rust_path = Path(raw_rust)
+            if rust_path.exists():
+                return rust_path
+        raw = repo_config.get("index")
+    else:
+        raw = repo_config.get("index")
+    if not isinstance(raw, str) or not raw:
+        raise ValueError(f"Repository index path is missing: {repo_config.get('id', 'unknown')}")
+    return Path(raw)
+
+
 def main():
     import argparse
     default_engine = resolve_backend_name(os.environ.get("AR_ENGINE"))
@@ -173,7 +188,7 @@ def main():
     
     for repo_config in config['repositories']:
         repo_id = repo_config['id']
-        index_path = Path(repo_config['index'])
+        index_path = _resolve_repo_index_path(repo_config, args.engine)
         
         if not index_path.exists():
             print(f"\n{repo_id}: Index not found, skipping")

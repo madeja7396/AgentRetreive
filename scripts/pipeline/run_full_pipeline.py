@@ -88,6 +88,21 @@ def _build_configs(grid: dict[str, list[Any]]) -> list[ExperimentConfig]:
     return configs
 
 
+def _resolve_repo_index_path(repo_config: dict[str, Any], engine_backend: str) -> Path:
+    if engine_backend == "rust":
+        raw_rust = repo_config.get("index_rust")
+        if isinstance(raw_rust, str) and raw_rust:
+            rust_path = Path(raw_rust)
+            if rust_path.exists():
+                return rust_path
+        raw = repo_config.get("index")
+    else:
+        raw = repo_config.get("index")
+    if not isinstance(raw, str) or not raw:
+        raise ValueError(f"Repository index path is missing: {repo_config.get('id', 'unknown')}")
+    return Path(raw)
+
+
 def evaluate_single_config(args: tuple) -> dict[str, Any]:
     """Evaluate a single configuration (standalone for multiprocessing)."""
     config_dict, repo_id, index_path_str, tasks, engine_backend = args
@@ -355,7 +370,7 @@ def main() -> int:
 
     for repo_config in repos:
         repo_id = repo_config["id"]
-        index_path = Path(repo_config["index"])
+        index_path = _resolve_repo_index_path(repo_config, args.engine)
         print(f"\n{'=' * 80}")
         print(f"Repository: {repo_id}")
         print("=" * 80)

@@ -636,11 +636,13 @@ def _build_pipeline_config(
     for corpus in selected:
         source_path = source_paths.get(corpus.id, f"artifacts/datasets/raw/{corpus.id}")
         index_path = index_paths.get(corpus.id, f"artifacts/datasets/{corpus.id}.index.json")
+        index_rust_path = str(Path(index_path).with_suffix(".bin")).replace("\\", "/")
         repos.append(
             {
                 "id": corpus.id,
                 "language": _normalize_lang(corpus.primary_language),
                 "index": index_path,
+                "index_rust": index_rust_path,
                 "source": source_path,
             }
         )

@@ -239,6 +239,10 @@ impl InvertedIndex {
         }
     }
 
+    pub fn documents(&self) -> &[DocumentMeta] {
+        &self.docs
+    }
+
     pub fn search(&self, query: &SearchQuery) -> Vec<SearchHit> {
         let must = normalize_terms(&query.must);
         let should = normalize_terms(&query.should);

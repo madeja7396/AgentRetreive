@@ -1,6 +1,37 @@
 # AgentRetrieve 実装移行 ToDo
 
-更新日: 2026-03-01
+更新日: 2026-03-02
+
+## Active Dashboard（Execution Control Tower）
+
+運用ルール（厳格）:
+- [x] `[x]` = 実行証跡（コマンド/成果物）確認済み
+- [x] `[ ]` = 未着手/実行待ち
+- [x] `[~]` = 保留（解除トリガ必須）
+
+サマリ（本日時点）:
+- [x] 未完了（`[ ]`）: 0件
+- [x] 保留（`[~]`）: 6件
+- [x] 完了（`[x]`）: 571件
+
+### 実行中（Current Sprint）
+
+- `R1-CORE`: Rust backend CLI bridge を実引数/`result.v3` 互換へ修正済み。route/full 実行証跡の最終追記を継続
+- `R1-WAL`: `ar-cli ix update` + WAL append/snapshot/compaction を実装済み。replay同値検証の実測追記を継続
+
+### 保留（Trigger付き）
+
+- `R1-PYO3`: PyO3 bindings 本実装（トリガ: CLI bridge運用安定 + native ABI方針確定）
+- `crates/ar-py`: crate追加（トリガ: `R1-PYO3` 着手）
+- `bindings smoke`: import/build smoke（トリガ: `crates/ar-py` 作成後）
+- `determinism/hash`: full rebuild vs replay 比較テスト（トリガ: WAL replay運用固定）
+- `benchmark rust path`: p50/p95/p99/cold-start/RSS（トリガ: `R1-WAL` 完了）
+- `aspnetcore compare`: Python vs Rust 固定run比較（トリガ: `benchmark rust path` 完了）
+
+### 次2スプリント（固定）
+
+- Sprint 1: `R1-CORE` 証跡確定 / `R1-WAL` replay整合 / rust index導線（`index_rust`）確定
+- Sprint 2: `R1-PERF` 実測 / `aspnetcore` 比較 / `R1-PAPER` 反映 / `R1-DOD` closeout
 
 ## 0. 目的と成功条件
 
