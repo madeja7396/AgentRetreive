@@ -21,6 +21,59 @@ _RE_CAMEL = re.compile(r'[a-z]+|[A-Z][a-z]+|[A-Z]+(?=[A-Z][a-z]|$)')
 _RE_SNAKE = re.compile(r'[a-zA-Z0-9]+')
 _RE_ALNUM = re.compile(r'[a-zA-Z0-9]+')
 
+_COMPOUND_PREFIXES = (
+    "https",
+    "http",
+    "json",
+    "yaml",
+    "url",
+    "api",
+    "xml",
+    "tls",
+    "ssl",
+    "tcp",
+    "udp",
+)
+
+_COMPOUND_SUFFIXES = (
+    "config",
+    "option",
+    "error",
+    "retry",
+    "path",
+    "url",
+    "version",
+    "main",
+    "test",
+    "type",
+    "name",
+    "file",
+    "line",
+    "data",
+    "item",
+    "client",
+    "server",
+    "glob",
+    "parse",
+)
+
+
+def split_compound(ident: str) -> list[str]:
+    text = ident.lower()
+    for suffix in _COMPOUND_SUFFIXES:
+        if not text.endswith(suffix):
+            continue
+        head = text[: -len(suffix)]
+        if len(head) >= 3 and head.isalpha():
+            return [head, suffix]
+    for prefix in _COMPOUND_PREFIXES:
+        if not text.startswith(prefix):
+            continue
+        tail = text[len(prefix):]
+        if len(tail) >= 3 and tail.isalpha():
+            return [prefix, tail]
+    return [text]
+
 
 def split_camel(ident: str) -> list[str]:
     """Split CamelCase identifier into parts.
@@ -63,12 +116,25 @@ def tokenize_identifier(ident: str) -> list[str]:
         # Then split each part by camel case
         camel_parts = split_camel(part)
         if camel_parts:
-            result.extend(camel_parts)
+            for camel in camel_parts:
+                result.append(camel)
+                split = split_compound(camel)
+                if split != [camel]:
+                    result.extend(split)
         else:
             # Fallback: just lowercase
-            result.append(part.lower())
+            lowered = part.lower()
+            result.append(lowered)
+            split = split_compound(lowered)
+            if split != [lowered]:
+                result.extend(split)
     
-    return result
+    # Preserve order while removing duplicates.
+    dedup: list[str] = []
+    for token in result:
+        if token not in dedup:
+            dedup.append(token)
+    return dedup
 
 
 def tokenize_line(line: str, base_pos: int = 0) -> Iterator[Token]:

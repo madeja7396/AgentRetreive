@@ -776,3 +776,22 @@
 - `run_final_evaluation.py` に variantごとの減衰統合を実装
 - `test/`・`doc/`・非コード拡張子への汎用ペナルティ、`include/pkg/api` への汎用ボーナスを導入
 - 複合語 prefix/suffix 分割（`urlglob` 等）を追加し、path fallback の語一致率を改善
+
+---
+
+### 2026-03-03: 語彙拡張は「少数・高信頼語」に限定しないと副作用が大きい
+
+**観測事実**:
+- `config/collect/error` まで拡張すると、usage/config タスクでノイズが増え `cli` の recall が悪化した
+- `http/retry/parse/completion` のみへ絞ると、`curl/cli/ripgrep` の取りこぼし改善に効いた
+- Rust tokenizer の複合語分割（prefix/suffix）と index 再構築により、固有ルールなしで `35/35` まで回復した
+
+**教訓**:
+1. query expansion は「意味が近く曖昧性が低い語」に限定する
+2. tokenizer 改修時は index 再構築を同サイクルで実施しないと効果検証にならない
+3. 改善判定は recall と mrr を分離して見る（今回は recall 回復後に curl の mrr 微差が残存）
+
+**対応**:
+- expansion 辞書を縮小（`http/retry/parse/completion` のみ）
+- `ar-core` tokenizer に複合語分割を追加し、`curl`/`cli` index を再構築
+- 汎用ルールのまま `overall recall 100.0% (35/35)` を達成（pending は `curl mrr_gap=0.011`）

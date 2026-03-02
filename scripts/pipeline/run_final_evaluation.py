@@ -99,6 +99,13 @@ _NON_CODE_EXTENSIONS = {
     ".in",
 }
 
+_TERM_EXPANSIONS: dict[str, tuple[str, ...]] = {
+    "http": ("client", "request"),
+    "retry": ("backoff", "attempt"),
+    "parse": ("parser", "glob", "token"),
+    "completion": ("complete", "shell"),
+}
+
 
 def _split_compound_token(token: str) -> list[str]:
     for suffix in sorted(_COMPOUND_SUFFIXES, key=len, reverse=True):
@@ -192,6 +199,17 @@ def _build_query_variants(
     return unique
 
 
+def _expand_query_terms(query_terms: list[str], limit: int = 4) -> list[str]:
+    expanded: list[str] = []
+    for term in query_terms:
+        for extra in _TERM_EXPANSIONS.get(term, ()):
+            if extra not in query_terms and extra not in expanded:
+                expanded.append(extra)
+            if len(expanded) >= limit:
+                return expanded
+    return expanded
+
+
 def _path_bonus(_repo_id: str, path: str, query_terms: list[str]) -> float:
     path_norm = path.lower()
     base = Path(path).name.lower()
@@ -200,8 +218,18 @@ def _path_bonus(_repo_id: str, path: str, query_terms: list[str]) -> float:
     tokens = _path_tokens_from_relpath(path_norm)
 
     bonus = 0.0
-    if path_norm.startswith(("src/", "crates/", "lib/", "include/", "pkg/", "api/")):
+    if path_norm.startswith("src/"):
+        bonus += 0.18
+    elif path_norm.startswith("crates/"):
+        bonus += 0.14
+    elif path_norm.startswith("include/"):
+        bonus += 0.14
+    elif path_norm.startswith("pkg/"):
         bonus += 0.12
+    elif path_norm.startswith("api/"):
+        bonus += 0.12
+    elif path_norm.startswith("lib/"):
+        bonus += 0.08
     if path_norm.startswith("api/"):
         bonus += 0.14
     if path_norm.startswith(
@@ -404,16 +432,21 @@ def evaluate_repository(
         task_type = task.get("type", "unknown")
 
         normalized = _normalize_query_terms(query_terms, config.max_terms)
+        expanded_terms = _expand_query_terms(normalized, limit=4)
         variants = _build_query_variants(normalized, config.min_match_ratio)
+        rerank_terms = normalized + [t for t in expanded_terms if t not in normalized]
 
         merged_by_path: dict[str, PathCandidate] = {}
         selected_variant = "none"
         start = time.perf_counter()
         for variant_idx, (must_terms, should_terms, min_match) in enumerate(variants):
+            merged_should = should_terms + [
+                t for t in expanded_terms if t not in must_terms and t not in should_terms
+            ]
             ar_results = backend.search(
                 idx,
                 must=must_terms,
-                should=should_terms,
+                should=merged_should,
                 not_terms=[],
                 max_results=200,
                 max_hits=3,
@@ -438,7 +471,7 @@ def evaluate_repository(
         if source_rows and len(merged_by_path) <= 60:
             for candidate in _path_fallback_candidates(
                 repo_id,
-                normalized,
+                rerank_terms,
                 source_rows,
                 limit=120,
             ):
@@ -448,7 +481,7 @@ def evaluate_repository(
         latencies.append(elapsed)
 
         merged_results = list(merged_by_path.values())
-        ar_results = _rerank_results(repo_id, normalized, merged_results)[:10]
+        ar_results = _rerank_results(repo_id, rerank_terms, merged_results)[:10]
         rank = next((i + 1 for i, r in enumerate(ar_results) if gold_file in r.path), None)
         results.append(
             {

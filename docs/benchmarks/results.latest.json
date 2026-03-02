@@ -1,55 +1,39 @@
 {
   "version": "results.latest",
-  "updated_at": "2026-03-02T16:59:39Z",
-  "run_id": "sota_cycle_generic_full1_20260303",
-  "profile": "sota_cycle_generic_full1",
+  "updated_at": "2026-03-02T17:22:47Z",
+  "run_id": "sota_cycle_generic_full5_20260303",
+  "profile": "sota_cycle_generic_full5",
   "repositories": 7,
   "tasks": 35,
   "engine": "rust",
   "strategy": "best-of-both",
   "metrics": {
     "recall_at_1": {
-      "value": 0.942857,
-      "found": 33,
+      "value": 1.0,
+      "found": 35,
       "total": 35,
-      "display": "94.3%"
+      "display": "100.0%"
     },
     "mrr": {
-      "value": 0.627471,
-      "display": "0.627"
+      "value": 0.718413,
+      "display": "0.718"
     },
     "avg_latency_ms": {
-      "value": 212.2,
-      "display": "212.2ms"
+      "value": 226.9,
+      "display": "226.9ms"
     }
   },
   "by_difficulty": {
     "easy": {"recall": 1.0, "found": 14, "total": 14},
-    "medium": {
-      "recall": 0.929,
-      "found": 13,
-      "total": 14
-    },
-    "hard": {
-      "recall": 0.857,
-      "found": 6,
-      "total": 7
-    }
+    "medium": {"recall": 1.0, "found": 14, "total": 14},
+    "hard": {"recall": 1.0, "found": 7, "total": 7}
   },
   "by_task_type": {
     "symbol_definition": {"recall": 1.0, "found": 14, "total": 14},
-    "configuration": {
-      "recall": 0.857,
-      "found": 6,
-      "total": 7
-    },
-    "error_handling": {
-      "recall": 0.857,
-      "found": 6,
-      "total": 7
-    },
+    "configuration": {"recall": 1.0, "found": 7, "total": 7},
+    "error_handling": {"recall": 1.0, "found": 7, "total": 7},
     "usage_search": {"recall": 1.0, "found": 7, "total": 7}
   },
-  "status": "sota_cycle_generic_in_progress",
-  "note": "固有ルール排除後の汎用改善サイクル。overall 94.3%(33/35) まで回復し、残課題は curl/cli の2repo。"
+  "status": "sota_cycle_generic_near_complete",
+  "note": "固有ルール排除後、overall 35/35 を回復。残課題は curl の MRR 0.489 (target 0.500) のみ。"
 }

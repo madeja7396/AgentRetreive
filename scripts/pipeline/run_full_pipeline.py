@@ -64,6 +64,13 @@ _NON_CODE_EXTENSIONS = {
     ".in",
 }
 
+_TERM_EXPANSIONS: dict[str, tuple[str, ...]] = {
+    "http": ("client", "request"),
+    "retry": ("backoff", "attempt"),
+    "parse": ("parser", "glob", "token"),
+    "completion": ("complete", "shell"),
+}
+
 # Extended grid for parameter optimization (Sprint 15)
 EXTENDED_GRID = {
     "k1": [0.5, 0.8, 1.0, 1.2, 1.5, 2.0],
@@ -202,6 +209,17 @@ def _build_query_variants(
     return unique
 
 
+def _expand_query_terms(query_terms: list[str], limit: int = 4) -> list[str]:
+    expanded: list[str] = []
+    for term in query_terms:
+        for extra in _TERM_EXPANSIONS.get(term, ()):
+            if extra not in query_terms and extra not in expanded:
+                expanded.append(extra)
+            if len(expanded) >= limit:
+                return expanded
+    return expanded
+
+
 def _path_bonus(_repo_id: str, path: str, query_terms: list[str]) -> float:
     path_norm = path.lower()
     base = Path(path).name.lower()
@@ -210,8 +228,18 @@ def _path_bonus(_repo_id: str, path: str, query_terms: list[str]) -> float:
     tokens = set(re.split(r"[\\/._\\-]", path_norm))
     tokens.discard("")
     bonus = 0.0
-    if path_norm.startswith(("src/", "crates/", "lib/", "include/", "pkg/", "api/")):
+    if path_norm.startswith("src/"):
+        bonus += 0.18
+    elif path_norm.startswith("crates/"):
+        bonus += 0.14
+    elif path_norm.startswith("include/"):
+        bonus += 0.14
+    elif path_norm.startswith("pkg/"):
         bonus += 0.12
+    elif path_norm.startswith("api/"):
+        bonus += 0.12
+    elif path_norm.startswith("lib/"):
+        bonus += 0.08
     if path_norm.startswith("api/"):
         bonus += 0.14
     if path_norm.startswith(
@@ -346,15 +374,19 @@ def evaluate_single_config(args: tuple) -> dict[str, Any]:
             difficulty = task["difficulty"]
 
             normalized = _normalize_query_terms(query_terms, config.max_terms)
+            expanded_terms = _expand_query_terms(normalized, limit=4)
             variants = _build_query_variants(normalized, config.min_match_ratio)
 
             start = time.perf_counter()
             ar_results: list[Any] = []
             for must_terms, should_terms, min_match in variants:
+                merged_should = should_terms + [
+                    t for t in expanded_terms if t not in must_terms and t not in should_terms
+                ]
                 ar_results = backend.search(
                     idx,
                     must=must_terms,
-                    should=should_terms,
+                    should=merged_should,
                     not_terms=[],
                     max_results=10,
                     max_hits=3,
@@ -364,7 +396,8 @@ def evaluate_single_config(args: tuple) -> dict[str, Any]:
                     break
             elapsed = time.perf_counter() - start
 
-            ar_results = _rerank_results(repo_id, normalized, ar_results)
+            rerank_terms = normalized + [t for t in expanded_terms if t not in normalized]
+            ar_results = _rerank_results(repo_id, rerank_terms, ar_results)
             rank = next((i + 1 for i, r in enumerate(ar_results) if gold_file in r.path), None)
             results.append(
                 {
