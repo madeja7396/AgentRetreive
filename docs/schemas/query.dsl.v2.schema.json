@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sch_query_dsl_v2",
+  "title": "AgentRetrieve Query DSL v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["v", "must", "should", "not", "budget"],
+  "properties": {
+    "v": {
+      "const": "query.v2"
+    },
+    "must": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "maxItems": 128
+    },
+    "should": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "maxItems": 128
+    },
+    "not": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "maxItems": 128
+    },
+    "near": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["terms", "scope"],
+        "properties": {
+          "terms": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 6,
+            "items": {"type": "string", "minLength": 1}
+          },
+          "scope": {
+            "type": "string",
+            "enum": ["line_window", "block", "symbol", "function", "file"]
+          },
+          "window": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 512
+          }
+        }
+      }
+    },
+    "symbol": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "maxItems": 128
+    },
+    "min_match": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 128
+    },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_bytes", "max_results", "max_hits", "max_excerpt"],
+      "properties": {
+        "max_bytes": {"type": "integer", "minimum": 256, "maximum": 1048576},
+        "max_results": {"type": "integer", "minimum": 1, "maximum": 2000},
+        "max_hits": {"type": "integer", "minimum": 1, "maximum": 200},
+        "max_excerpt": {"type": "integer", "minimum": 16, "maximum": 4096}
+      }
+    },
+    "options": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cursor": {"type": ["string", "null"]},
+        "deterministic": {"type": "boolean"}
+      }
+    }
+  }
+}

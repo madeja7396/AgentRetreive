@@ -1,6 +1,6 @@
 # SSOT (Single Source of Truth)
 
-更新日: 2026-03-01
+更新日: 2026-03-02
 
 ## 最新実験結果（Baseline v1.1 確定値）
 
@@ -44,6 +44,7 @@
 - Baseline v1.1: 5言語（Rust, Go, C, C++, Python）
 - 追加可能: 4言語（JavaScript, Haskell, Elixir, C#）
 - 詳細: `docs/benchmarks/multilang_analysis.v1.json`
+- 追補: `docs/benchmarks/multilang_mrr_symbol_correlation.v1.json`
 
 ## スケーラビリティ分析（Sprint 11）
 
@@ -80,12 +81,15 @@
 | 仕様ガバナンス | `docs/SSOT.md` | 仕様の優先順位と変更規則 |
 | 名前空間 | `docs/NAMESPACE_RESERVATIONS.md` | 予約キー・ID・prefix |
 | Query DSL v1 | `docs/schemas/query.dsl.v1.schema.json` | 入力契約 |
+| Query DSL v2 | `docs/schemas/query.dsl.v2.schema.json` | Rust系導線の入力契約 |
 | Result v1 | `docs/schemas/result.minijson.v1.schema.json` | 出力契約 |
 | Result v2 | `docs/schemas/result.minijson.v2.schema.json` | capability freshness を含む出力契約 |
+| Result v3 | `docs/schemas/result.minijson.v3.schema.json` | compact handle/proof を含む Rust出力契約 |
 | Dataset Manifest v1 | `docs/schemas/dataset_manifest.v1.schema.json` | データ来歴契約 |
 | Experiment Run Record v1 | `docs/schemas/experiment_run_record.v1.schema.json` | 実験再現契約 |
 | Experiment Run Record v2 | `docs/schemas/experiment_run_record.v2.schema.json` | e2e/micro を含む実験再現契約 |
 | Run Constraints v2 | `docs/benchmarks/run_constraints.v2.json` | 再現許容誤差を含む実行制約 |
+| Benchmark Tier Design v2 | `docs/benchmarks/BENCHMARK_DESIGN_V2_L123.md` | L1/L2/L3 設計と分類ルール |
 | Benchmark Inputs v1 | `docs/benchmarks/*` | 評価コーパス、タスク、ベースライン、実行制約 |
 | Experiment Findings v2 | `docs/research/experiment_findings_v2.md` | 最新実験結果（7リポジトリ35タスク） |
 | Research Roadmap | `docs/research/roadmap.md` | 改善計画と優先順位 |
@@ -96,32 +100,33 @@
 | リスク管理 | `tasks/risk_register.md` | リスクと緩和策 |
 | 検証定義 | `tasks/validation_matrix.md` | 検証方法と exit criteria |
 
-## Version Coexistence Policy (v1/v2)
+## Version Coexistence Policy (v1/v2/v3)
 
 | Version | Status | Default | Deprecation Condition |
 |---------|--------|---------|----------------------|
-| v1 | Stable | CLI default | Maintained indefinitely for backward compatibility |
-| v2 | Stable | Available via `--result-version v2` | Will become default after 3+ months production validation |
+| v1 | Stable | Legacy compatibility | Maintained for backward compatibility |
+| v2 | Stable | Compatibility bridge | Maintained for transitional consumers |
+| v3 | Stable | Rust CLI default | Current recommended version for new integrations |
 
 ### Migration Path
-1. **Current**: v1 is default, v2 is opt-in (`--result-version v2`)
-2. **Transition** (TBD): v2 becomes default, v1 available via `--result-version v1`
-3. **Deprecation** (TBD): v1 marked deprecated, removal announced 6 months in advance
+1. **Current**: Rust path emits `v3`; Python path remains `v1/v2` compatible
+2. **Transition**: consumers requiring legacy fields use v3 adapter (v3->v2->v1)
+3. **Deprecation** (TBD): v1/v2 deprecation announced only after adapter adoption is complete
 
 ### Compatibility Rules
-- v1 and v2 schemas are additive (v2 adds `cap.index_fingerprint` and `r[].cap_epoch`)
-- All v1 outputs remain valid v2 inputs (forward compatibility for queries)
-- v2 outputs can be downgraded to v1 by ignoring extra fields (backward compatibility for consumers)
-- Capability handles (`doc_id`, `span_id`) format is identical between v1 and v2
+- v1 and v2 schemas are additive (v2 adds capability freshness metadata)
+- v3 is shape-breaking by design and requires adapter-based downgrade for v1/v2 consumers
+- v3 preserves deterministic ranking order and proof envelope (`proof.digest`, `proof.bounds`)
+- Compatibility policy details are fixed in `docs/contracts/RESULT_COMPATIBILITY_POLICY.v1.md`
 
-### When to Use v2
-- **Required**: When `cap verify` freshness checking is needed
-- **Recommended**: For new integrations and production deployments
-- **Optional**: For existing v1 consumers without capability verification needs
+### When to Use v3
+- **Required**: Rust CLI/MCP integrations and compact proof-carrying output
+- **Recommended**: All new integrations
+- **Optional**: Existing v1/v2 consumers may remain on adapter path
 
 ## 変更ルール
 
 - 仕様変更時は、関連する schema と namespace を同一コミットで更新する
 - 破壊的変更は新 version を追加し、旧 version の廃止時期を明記する
 - 論文に使う数値は schema 準拠の実験記録からのみ取得する
-- v1/v2 の併存期間中は、両方の schema を同一コミットで更新する
+- v1/v2/v3 の併存期間中は、関連 schema と互換ポリシーを同一コミットで更新する

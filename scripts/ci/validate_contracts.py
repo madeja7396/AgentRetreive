@@ -17,8 +17,10 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 SCHEMAS = {
     "query": ROOT / "docs/schemas/query.dsl.v1.schema.json",
+    "query_v2": ROOT / "docs/schemas/query.dsl.v2.schema.json",
     "result": ROOT / "docs/schemas/result.minijson.v1.schema.json",
     "result_v2": ROOT / "docs/schemas/result.minijson.v2.schema.json",
+    "result_v3": ROOT / "docs/schemas/result.minijson.v3.schema.json",
     "dataset_manifest": ROOT / "docs/schemas/dataset_manifest.v1.schema.json",
     "experiment_run_record": ROOT / "docs/schemas/experiment_run_record.v1.schema.json",
     "experiment_run_record_v2": ROOT / "docs/schemas/experiment_run_record.v2.schema.json",

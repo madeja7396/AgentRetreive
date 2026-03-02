@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sch_result_minijson_v3",
+  "title": "AgentRetrieve Result Mini-JSON v3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["v", "ok", "cap", "r", "t", "cur", "lim"],
+  "properties": {
+    "v": {"const": "result.v3"},
+    "ok": {"type": "boolean"},
+    "cap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["epoch", "index_hash", "engine", "engine_version", "health"],
+      "properties": {
+        "epoch": {"type": "string", "pattern": "^[a-f0-9]{8,40}$"},
+        "index_hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+        "engine": {"type": "string", "enum": ["rust", "py"]},
+        "engine_version": {"type": "string", "minLength": 1},
+        "health": {"type": "string", "minLength": 1}
+      }
+    },
+    "r": {
+      "type": "array",
+      "maxItems": 2000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "s", "h", "rng", "proof", "next", "path"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^d[0-9]+_s[0-9]+$"},
+          "s": {"type": "integer", "minimum": 0, "maximum": 1000},
+          "path": {"type": "string", "minLength": 1},
+          "h": {
+            "type": "array",
+            "maxItems": 200,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["ln", "txt", "sc"],
+              "properties": {
+                "ln": {"type": "integer", "minimum": 1},
+                "txt": {"type": "string"},
+                "sc": {"type": "integer", "minimum": 0, "maximum": 1000}
+              }
+            }
+          },
+          "rng": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {"type": "integer", "minimum": 1}
+          },
+          "proof": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["digest", "bounds"],
+            "properties": {
+              "digest": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+              "bounds": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": {"type": "integer", "minimum": 1}
+              }
+            }
+          },
+          "next": {
+            "type": "array",
+            "maxItems": 32,
+            "items": {"type": "string", "pattern": "^d[0-9]+_s[0-9]+$"}
+          }
+        }
+      }
+    },
+    "t": {"type": "boolean"},
+    "cur": {"type": ["string", "null"]},
+    "lim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_bytes", "emitted_bytes", "max_results", "max_hits"],
+      "properties": {
+        "max_bytes": {"type": "integer", "minimum": 1},
+        "emitted_bytes": {"type": "integer", "minimum": 0},
+        "max_results": {"type": "integer", "minimum": 1},
+        "max_hits": {"type": "integer", "minimum": 1}
+      }
+    }
+  }
+}

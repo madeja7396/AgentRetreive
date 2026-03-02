@@ -1,11 +1,13 @@
-use std::path::PathBuf;
+use std::fs;
+use std::path::{Path, PathBuf};
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use ar_core::{
     healthcheck, InvertedIndex, SearchHit, SearchQuery, DEFAULT_PATTERN_CSV, ENGINE_VERSION,
 };
 use clap::{Args, Parser, Subcommand};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 
 #[derive(Parser, Debug)]
 #[command(name = "ar", about = "AgentRetrieve Rust CLI")]
@@ -50,28 +52,115 @@ struct QueryArgs {
     not_terms: String,
     #[arg(long, default_value = "")]
     symbol: String,
+    #[arg(long)]
+    json: Option<PathBuf>,
     #[arg(long, default_value_t = 10)]
     max_results: usize,
     #[arg(long, default_value_t = 0)]
     min_match: usize,
+    #[arg(long, default_value_t = 10)]
+    max_hits: usize,
+    #[arg(long, default_value_t = 8192)]
+    max_bytes: usize,
+    #[arg(long, default_value_t = 256)]
+    max_excerpt: usize,
+}
+
+#[derive(Debug, Deserialize, Default)]
+struct DslV2Budget {
+    #[serde(default)]
+    max_results: Option<usize>,
+    #[serde(default)]
+    max_hits: Option<usize>,
+    #[serde(default)]
+    max_bytes: Option<usize>,
+    #[serde(default)]
+    max_excerpt: Option<usize>,
+}
+
+#[derive(Debug, Deserialize, Default)]
+struct DslV2Query {
+    #[serde(default)]
+    v: Option<String>,
+    #[serde(default)]
+    must: Vec<String>,
+    #[serde(default)]
+    should: Vec<String>,
+    #[serde(default, rename = "not")]
+    not_terms: Vec<String>,
+    #[serde(default)]
+    near: Vec<serde_json::Value>,
+    #[serde(default)]
+    symbol: Vec<String>,
+    #[serde(default)]
+    min_match: Option<usize>,
+    #[serde(default)]
+    budget: Option<DslV2Budget>,
+}
+
+#[derive(Debug, Clone)]
+struct QueryRuntimeConfig {
+    must: Vec<String>,
+    should: Vec<String>,
+    not_terms: Vec<String>,
+    symbol: Vec<String>,
+    min_match: usize,
+    max_results: usize,
+    max_hits: usize,
+    max_bytes: usize,
+    max_excerpt: usize,
 }
 
 #[derive(Debug, Serialize)]
-struct QueryOutput {
+struct QueryOutputV3 {
     v: &'static str,
     ok: bool,
-    engine: &'static str,
-    engine_version: &'static str,
-    status: &'static str,
-    r: Vec<QueryHit>,
+    cap: Capability,
+    r: Vec<ResultEntryV3>,
+    t: bool,
+    cur: Option<String>,
+    lim: Limits,
 }
 
 #[derive(Debug, Serialize)]
-struct QueryHit {
-    doc_id: u32,
+struct Capability {
+    epoch: String,
+    index_hash: String,
+    engine: &'static str,
+    engine_version: &'static str,
+    health: &'static str,
+}
+
+#[derive(Debug, Serialize)]
+struct Limits {
+    max_bytes: usize,
+    emitted_bytes: usize,
+    max_results: usize,
+    max_hits: usize,
+}
+
+#[derive(Debug, Serialize)]
+struct ResultEntryV3 {
+    id: String,
+    s: i32,
+    h: Vec<HitEntryV3>,
+    rng: [u32; 2],
+    proof: ProofV3,
+    next: Vec<String>,
     path: String,
-    score: f64,
-    symbol: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct HitEntryV3 {
+    ln: u32,
+    txt: String,
+    sc: i32,
+}
+
+#[derive(Debug, Serialize)]
+struct ProofV3 {
+    digest: String,
+    bounds: [u32; 2],
 }
 
 fn main() -> Result<()> {
@@ -102,28 +191,118 @@ fn cmd_ix_build(args: IxBuildArgs) -> Result<()> {
 }
 
 fn cmd_query(args: QueryArgs) -> Result<()> {
-    let idx = InvertedIndex::load(&args.index)?;
+    let idx = InvertedIndex::load(&args.index)
+        .with_context(|| format!("failed to load index: {}", args.index.display()))?;
+    let runtime = load_query_runtime(&args)?;
+
     let query = SearchQuery {
+        must: runtime.must.clone(),
+        should: runtime.should.clone(),
+        not_terms: runtime.not_terms.clone(),
+        symbol: runtime.symbol.clone(),
+        max_results: runtime.max_results,
+        min_match: runtime.min_match,
+    };
+
+    let hits = idx.search(&query);
+    let mut entries = hits_to_entries(hits, runtime.max_hits, runtime.max_excerpt);
+
+    if entries.len() > runtime.max_results {
+        entries.truncate(runtime.max_results);
+    }
+
+    let index_hash = sha256_hex_file(&args.index)?;
+    let mut payload = QueryOutputV3 {
+        v: "result.v3",
+        ok: true,
+        cap: Capability {
+            epoch: index_hash.chars().take(8).collect(),
+            index_hash: format!("sha256:{index_hash}"),
+            engine: "rust",
+            engine_version: ENGINE_VERSION,
+            health: healthcheck(),
+        },
+        r: Vec::new(),
+        t: false,
+        cur: None,
+        lim: Limits {
+            max_bytes: runtime.max_bytes,
+            emitted_bytes: 0,
+            max_results: runtime.max_results,
+            max_hits: runtime.max_hits,
+        },
+    };
+
+    apply_budget_enforcer(&mut payload, entries, runtime.max_bytes)?;
+    let rendered = serde_json::to_string_pretty(&payload)?;
+    println!("{rendered}");
+    Ok(())
+}
+
+fn load_query_runtime(args: &QueryArgs) -> Result<QueryRuntimeConfig> {
+    let mut cfg = QueryRuntimeConfig {
         must: parse_csv(&args.must),
         should: parse_csv(&args.should),
         not_terms: parse_csv(&args.not_terms),
         symbol: parse_csv(&args.symbol),
-        max_results: args.max_results,
         min_match: args.min_match,
+        max_results: args.max_results,
+        max_hits: args.max_hits,
+        max_bytes: args.max_bytes,
+        max_excerpt: args.max_excerpt,
     };
 
-    let hits = idx.search(&query);
-    let payload = QueryOutput {
-        v: "result.v3",
-        ok: true,
-        engine: "rust",
-        engine_version: ENGINE_VERSION,
-        status: healthcheck(),
-        r: hits_to_output(hits),
-    };
+    if let Some(json_path) = &args.json {
+        let raw = fs::read_to_string(json_path)
+            .with_context(|| format!("failed to read query json: {}", json_path.display()))?;
+        let q: DslV2Query = serde_json::from_str(&raw)
+            .with_context(|| format!("failed to parse query json: {}", json_path.display()))?;
 
-    println!("{}", serde_json::to_string_pretty(&payload)?);
-    Ok(())
+        if let Some(v) = q.v.as_deref() {
+            if v != "query.v2" {
+                anyhow::bail!("unsupported query version: {v}");
+            }
+        }
+
+        cfg.must = q.must;
+        cfg.should = q.should;
+        cfg.not_terms = q.not_terms;
+        cfg.symbol = q.symbol;
+        cfg.min_match = q.min_match.unwrap_or(cfg.min_match);
+
+        if let Some(budget) = q.budget {
+            if let Some(v) = budget.max_results {
+                cfg.max_results = v;
+            }
+            if let Some(v) = budget.max_hits {
+                cfg.max_hits = v;
+            }
+            if let Some(v) = budget.max_bytes {
+                cfg.max_bytes = v;
+            }
+            if let Some(v) = budget.max_excerpt {
+                cfg.max_excerpt = v;
+            }
+        }
+
+        // v2 keeps near clause in contract; current rust core ignores it in scoring for now.
+        let _ = q.near;
+    }
+
+    if cfg.max_results == 0 {
+        cfg.max_results = 1;
+    }
+    if cfg.max_hits == 0 {
+        cfg.max_hits = 1;
+    }
+    if cfg.max_bytes < 256 {
+        cfg.max_bytes = 256;
+    }
+    if cfg.max_excerpt == 0 {
+        cfg.max_excerpt = 64;
+    }
+
+    Ok(cfg)
 }
 
 fn parse_csv(raw: &str) -> Vec<String> {
@@ -134,13 +313,96 @@ fn parse_csv(raw: &str) -> Vec<String> {
         .collect()
 }
 
-fn hits_to_output(hits: Vec<SearchHit>) -> Vec<QueryHit> {
+fn hits_to_entries(
+    hits: Vec<SearchHit>,
+    max_hits: usize,
+    max_excerpt: usize,
+) -> Vec<ResultEntryV3> {
     hits.into_iter()
-        .map(|h| QueryHit {
-            doc_id: h.doc_id,
-            path: h.path,
-            score: h.score,
-            symbol: h.matched_symbols,
+        .map(|h| {
+            let score = normalize_score(h.score);
+            let mut hit_entries = Vec::with_capacity(max_hits.max(1));
+            let symbol_text = if h.matched_symbols.is_empty() {
+                String::from("lexical")
+            } else {
+                format!("symbol:{}", h.matched_symbols.join("|"))
+            };
+            hit_entries.push(HitEntryV3 {
+                ln: h.bounds.start,
+                txt: truncate_excerpt(&format!("{} [{symbol_text}]", h.path), max_excerpt),
+                sc: score,
+            });
+
+            ResultEntryV3 {
+                id: format!("d{}_s1", h.doc_id),
+                s: score,
+                h: hit_entries,
+                rng: [h.bounds.start, h.bounds.end],
+                proof: ProofV3 {
+                    digest: format!("sha256:{}", h.digest),
+                    bounds: [h.bounds.start, h.bounds.end],
+                },
+                next: Vec::new(),
+                path: h.path,
+            }
         })
         .collect()
+}
+
+fn normalize_score(raw: f64) -> i32 {
+    let scaled = (raw * 100.0).round() as i32;
+    scaled.clamp(0, 1000)
+}
+
+fn truncate_excerpt(s: &str, max_excerpt: usize) -> String {
+    let mut chars = s.chars();
+    let mut out = String::new();
+    for _ in 0..max_excerpt {
+        if let Some(ch) = chars.next() {
+            out.push(ch);
+        } else {
+            return out;
+        }
+    }
+    if chars.next().is_some() {
+        out.push('…');
+    }
+    out
+}
+
+fn apply_budget_enforcer(
+    payload: &mut QueryOutputV3,
+    entries: Vec<ResultEntryV3>,
+    max_bytes: usize,
+) -> Result<()> {
+    payload.r.clear();
+    payload.t = false;
+
+    for entry in entries {
+        payload.r.push(entry);
+        let probe_bytes = serde_json::to_vec(payload)?;
+        if probe_bytes.len() <= max_bytes {
+            payload.lim.emitted_bytes = probe_bytes.len();
+            continue;
+        }
+
+        payload.r.pop();
+        payload.t = true;
+        break;
+    }
+
+    let final_bytes = serde_json::to_vec(payload)?;
+    payload.lim.emitted_bytes = final_bytes.len();
+    if payload.lim.emitted_bytes > max_bytes {
+        payload.t = true;
+    }
+    Ok(())
+}
+
+fn sha256_hex_file(path: &Path) -> Result<String> {
+    let bytes =
+        fs::read(path).with_context(|| format!("failed to read file: {}", path.display()))?;
+    let mut hasher = Sha256::new();
+    hasher.update(bytes);
+    Ok(format!("{:x}", hasher.finalize()))
 }

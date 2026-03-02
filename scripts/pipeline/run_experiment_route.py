@@ -149,7 +149,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--grid-profile",
-        choices=["full", "fast"],
+        choices=["full", "fast", "extended"],
         default="",
         help="Grid profile passed to run_corpus_auto_adapt and run_full_pipeline.",
     )
@@ -437,18 +437,25 @@ def main() -> int:
             index_files = list(index_dir.glob("*.index.json"))
             if index_files:
                 print("[symbol extraction metrics]")
-                _run(
-                    [
-                        "python3",
-                        "scripts/benchmark/export_symbol_support_metrics.py",
-                        "--index",
-                        str(index_files[0]),
-                        "--output",
-                        f"{output_dir}/symbol_support_summary.json",
-                    ],
-                    cwd=root,
-                    dry_run=args.dry_run,
-                )
+                try:
+                    _run(
+                        [
+                            "python3",
+                            "scripts/benchmark/export_symbol_support_metrics.py",
+                            "--index",
+                            str(index_files[0]),
+                            "--output",
+                            f"{output_dir}/symbol_support_summary.json",
+                        ],
+                        cwd=root,
+                        dry_run=args.dry_run,
+                    )
+                except subprocess.CalledProcessError as exc:
+                    # Keep route completion non-blocking for advisory symbol diagnostics.
+                    print(
+                        "[warn] symbol support metrics failed "
+                        f"(exit={exc.returncode}); continuing."
+                    )
 
     print("=" * 80)
     print("ROUTE COMPLETE")

@@ -635,4 +635,20 @@
 
 ---
 
+### 2026-03-02: route の診断系ステップは非ブロッキング化する
+
+**観測事実**:
+- `run_experiment_route.py` 本体（contracts/tests/final-eval/run_record）は成功していても、診断系の `export_symbol_support_metrics.py` が閾値警告で非0終了し、全体が失敗していた
+- 結果として「実験完走」と「診断警告」が混同され、run_record 成果物の扱いが不安定になった
+
+**教訓**:
+1. 実験の完走条件と診断の品質警告は分離すべき
+2. route は run_record 生成完了を主成功条件にし、診断失敗は warning に落とすべき
+
+**対応**:
+- `run_experiment_route.py` の symbol metrics 実行を try/except 化し、失敗時は warning を出して継続
+- これにより `--profile full --skip-auto-adapt` でも route 完走と run_record 生成を安定化
+
+---
+
 *最終更新: 2026-03-01*

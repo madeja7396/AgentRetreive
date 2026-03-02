@@ -1,0 +1,45 @@
+{
+  "version": "multilang_mrr_symbol_correlation.v1",
+  "source_final_summary": "artifacts/experiments/pipeline/final_summary.json",
+  "source_symbol_metrics_dir": "artifacts/experiments/pipeline/symbol_repo_metrics",
+  "sample_count": 7,
+  "pearson_mrr_vs_fallback_rate": 0.0932294773756895,
+  "spearman_mrr_vs_fallback_rate": 0.14285714285714285,
+  "rows": [
+    {
+      "repo": "ripgrep",
+      "mrr": 0.6,
+      "fallback_rate": 0.2079
+    },
+    {
+      "repo": "fd",
+      "mrr": 0.55,
+      "fallback_rate": 0.125
+    },
+    {
+      "repo": "fzf",
+      "mrr": 0.33333333333333337,
+      "fallback_rate": 0.0235
+    },
+    {
+      "repo": "curl",
+      "mrr": 0.32857142857142857,
+      "fallback_rate": 0.3808
+    },
+    {
+      "repo": "fmt",
+      "mrr": 0.36666666666666664,
+      "fallback_rate": 0.4267
+    },
+    {
+      "repo": "pytest",
+      "mrr": 0.3333333333333333,
+      "fallback_rate": 0.4708
+    },
+    {
+      "repo": "cli",
+      "mrr": 0.15333333333333335,
+      "fallback_rate": 0.0051
+    }
+  ]
+}

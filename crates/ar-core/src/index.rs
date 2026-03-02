@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result};
 use fst::{Map, MapBuilder};
 use globset::{Glob, GlobSet, GlobSetBuilder};
+use memmap2::MmapOptions;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use walkdir::WalkDir;
@@ -29,6 +30,8 @@ pub struct DocumentMeta {
     pub path: String,
     pub lang: Option<String>,
     pub length: u32,
+    #[serde(default = "default_line_count")]
+    pub line_count: u32,
     pub content_hash: String,
     pub symbols: Vec<SymbolSpan>,
 }
@@ -84,6 +87,14 @@ pub struct SearchHit {
     pub path: String,
     pub score: f64,
     pub matched_symbols: Vec<String>,
+    pub digest: String,
+    pub bounds: LineBounds,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct LineBounds {
+    pub start: u32,
+    pub end: u32,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -124,6 +135,7 @@ impl InvertedIndex {
 
             let doc_id = doc_idx as u32;
             let doc_len: u32 = tf_map.values().copied().sum();
+            let line_count: u32 = (content.bytes().filter(|b| *b == b'\n').count() as u32) + 1;
             total_terms += doc_len as u64;
 
             for (term, tf) in tf_map {
@@ -145,6 +157,7 @@ impl InvertedIndex {
                 path: rel,
                 lang,
                 length: doc_len,
+                line_count,
                 content_hash: digest,
                 symbols,
             });
@@ -196,10 +209,13 @@ impl InvertedIndex {
     }
 
     pub fn load(index_path: &Path) -> Result<Self> {
-        let payload = fs::read(index_path)
-            .with_context(|| format!("failed to read index: {}", index_path.display()))?;
+        let file = fs::File::open(index_path)
+            .with_context(|| format!("failed to open index: {}", index_path.display()))?;
+        // SAFETY: read-only mapping of an immutable index artifact.
+        let mmap = unsafe { MmapOptions::new().map(&file) }
+            .with_context(|| format!("failed to mmap index: {}", index_path.display()))?;
         let persisted: PersistedIndex =
-            bincode::deserialize(&payload).context("failed to deserialize index")?;
+            bincode::deserialize(&mmap).context("failed to deserialize index")?;
         let term_fst = Map::new(persisted.fst_bytes.clone()).context("failed to load fst map")?;
 
         Ok(Self {
@@ -322,6 +338,11 @@ impl InvertedIndex {
                 path: doc.path.clone(),
                 score,
                 matched_symbols,
+                digest: doc.content_hash.clone(),
+                bounds: LineBounds {
+                    start: 1,
+                    end: doc.line_count.max(1),
+                },
             });
         }
 
@@ -370,6 +391,10 @@ fn normalize_terms(terms: &[String]) -> Vec<String> {
         out.push(normalized);
     }
     out
+}
+
+fn default_line_count() -> u32 {
+    1
 }
 
 fn build_fst(postings: &BTreeMap<String, Vec<Posting>>) -> Result<(Vec<u8>, Map<Vec<u8>>)> {

@@ -755,7 +755,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--grid-profile",
-        choices=["full", "fast"],
+        choices=["full", "fast", "extended"],
         default="full",
         help="Parameter search grid profile passed to run_full_pipeline.",
     )
