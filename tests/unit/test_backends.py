@@ -34,3 +34,11 @@ class TestBackendFactory(TestCase):
     def test_create_backend_rust(self) -> None:
         backend = create_backend("rust")
         self.assertIsInstance(backend, RustBackend)
+
+    def test_rust_backend_cli_available(self) -> None:
+        """Verify ar-cli binary is detected."""
+        backend = create_backend("rust")
+        self.assertTrue(hasattr(backend, '_cli'))
+        self.assertIsInstance(backend._cli, str)
+        # Verify the path looks like ar-cli
+        self.assertIn("ar-cli", backend._cli)

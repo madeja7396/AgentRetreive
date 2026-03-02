@@ -4,6 +4,7 @@ pub mod bm25;
 pub mod index;
 pub mod symbol;
 pub mod tokenizer;
+pub mod wal;
 
 pub use index::{IndexStats, InvertedIndex, SearchHit, SearchQuery, DEFAULT_PATTERN_CSV};
 pub use symbol::SymbolSpan;
