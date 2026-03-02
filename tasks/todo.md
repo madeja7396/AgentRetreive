@@ -10,9 +10,9 @@
 - [x] `[~]` = 保留（解除トリガ必須）
 
 サマリ（本日時点）:
-- [x] 未完了（`[ ]`）: 14件
+- [x] 未完了（`[ ]`）: 13件
 - [x] 保留（`[~]`）: 5件
-- [x] 完了（`[x]`）: 605件
+- [x] 完了（`[x]`）: 606件
 
 ### 実行中（Current Sprint）
 
@@ -24,6 +24,7 @@
 - `SOTA-ALL`: 改善サイクルv2で `Recall 77.1% (27/35)`, `MRR 0.486` を確認（前回 `68.6% / 0.321` から改善）
 - `SOTA-ALL`: 改善サイクルv3で `Recall 88.6% (31/35)`, `MRR 0.537` を確認（v2 `77.1% / 0.486` から改善）
 - `SOTA-ALL`: 改善サイクルv5で `Recall 100.0% (35/35)`, `MRR 0.755` を達成（v4_fix `97.1% / 0.623` から改善）
+- `SOTA-ALL`: 再現性ゲート 1/3 を通過（`sota_cycle_v6_repro1`: `35/35`, `MRR 0.755`, `pending=0`）
 - `SOTA-LOOP`: 全コーパスSOTA到達まで改善ループを継続運用（Cycle運用章を追加）
 - Cycle実測（2026-03-02）: `fd` index build は `py=16.3s` → `rust=1.23s`（約13.3x高速化）
 - Cycle実測（2026-03-02）: `ripgrep` index build は `py=53.1s` → `rust=2.62s`（約20.3x高速化, 目標達成）
@@ -2505,7 +2506,7 @@
 - [x] Cycle-3: `curl` 専用改善（`src/tool_*` + `.h` 優先補正の強化）
 - [x] Cycle-4: `pytest` 専用改善（`_pytest/main.py`, `_pytest/python.py` への識別性向上）
 - [x] Cycle-5: `fmt` / `cli` / `ripgrep` の residual gap 収束（precision優先）
-- [ ] Cycle-6: 再現性ゲート 1/3（35/35 + backlog 0 を再確認）
+- [x] Cycle-6: 再現性ゲート 1/3（35/35 + backlog 0 を再確認）
 - [ ] Cycle-7: 再現性ゲート 2/3（35/35 + backlog 0 を再確認）
 - [ ] Cycle-8: 再現性ゲート 3/3（35/35 + backlog 0 を再確認）
 
@@ -2521,6 +2522,7 @@
   - SOTA到達まで反復を止めないための運用章を追加（終了条件、反復手順、優先投入、停滞時エスカレーション）
 - 検証:
   - `artifacts/experiments/sota_cycle_v5/final_summary.json` で `35/35`, `MRR 0.755`, `pending=0` を確認
+  - `artifacts/experiments/sota_cycle_v6_repro1/final_summary.json` で再現性ゲート 1/3（`35/35`, `MRR 0.755`, `pending=0`）を確認
   - `PYTHONPATH=src pytest -q` PASS（37 passed）
   - `python3 scripts/ci/validate_contracts.py` PASS
 - 判定: `Go`（SOTA達成、再現性カウント運用へ）

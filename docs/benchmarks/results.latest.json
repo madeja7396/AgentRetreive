@@ -1,8 +1,8 @@
 {
   "version": "results.latest",
-  "updated_at": "2026-03-02T16:13:54Z",
-  "run_id": "sota_cycle_v5_20260303",
-  "profile": "sota_cycle_v5",
+  "updated_at": "2026-03-02T16:18:24Z",
+  "run_id": "sota_cycle_v6_repro1_20260303",
+  "profile": "sota_cycle_v6_repro1",
   "repositories": 7,
   "tasks": 35,
   "engine": "rust",
@@ -19,8 +19,8 @@
       "display": "0.755"
     },
     "avg_latency_ms": {
-      "value": 224.4,
-      "display": "224.4ms"
+      "value": 226.3,
+      "display": "226.3ms"
     }
   },
   "by_difficulty": {
@@ -63,5 +63,5 @@
     }
   },
   "status": "sota_cycle_complete",
-  "note": "SOTA改善サイクル v5。全7コーパスで recall 100.0% / backlog 0 を達成。"
+  "note": "SOTA改善サイクル v6(repro1)。全7コーパスで recall 100.0% / backlog 0 を維持（再現性ゲート1/3）。"
 }
